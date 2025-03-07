@@ -15,7 +15,10 @@
         .note-button { padding: 5px 10px; margin-right: 5px; border: 1px solid #ccc; cursor: pointer; }
         .note-button.selected { background-color: lightblue; }
         .playback-display { display: flex; overflow-x: hidden; border: 1px solid #ccc; height: 30px; margin-bottom: 10px; }
-        .playback-note { width: 20px; height: 20px; border: 1px solid black; margin-right: 2px; background-color: lightyellow; }
+        .playback-step { width: 20px; height: 20px; border: 1px solid black; margin-right: 2px; text-align: center; line-height: 20px; font-size: 10px; }
+        .playback-step.note { background-color: lightyellow; }
+        .playback-step.rest { background-color: lightcoral; }
+        .playback-step.skip { background-color: lightblue; }
     </style>
 </head>
 <body>
@@ -87,22 +90,22 @@
         let currentArpRhythmIndex = 0;
         let currentPatternIndex = 0;
         const playbackDisplayElem = document.getElementById('playbackDisplay');
-        const maxPlaybackNotes = 30; // Limit number of displayed notes for scrolling effect
+        const maxPlaybackSteps = 30; // Display steps, not notes now
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
 
-        // UI Note Selection
+        // UI Note Selection (same as before)
         const noteButtons = document.querySelectorAll('.note-button');
         noteButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const noteValue = parseInt(this.dataset.note);
                 const index = uiHeldNotes.indexOf(noteValue);
                 if (index > -1) {
-                    uiHeldNotes.splice(index, 1); // Remove if already selected
+                    uiHeldNotes.splice(index, 1);
                     this.classList.remove('selected');
                 } else {
-                    uiHeldNotes.push(noteValue); // Add if not selected
+                    uiHeldNotes.push(noteValue);
                     this.classList.add('selected');
                 }
                 updateUiHeldNotesDisplay();
@@ -114,7 +117,7 @@
             document.getElementById('uiHeldNotesDisplay').innerText = noteNames.join(", ");
         }
 
-        // MIDI Initialization (as before)
+        // MIDI Initialization (same as before)
         navigator.requestMIDIAccess()
             .then(onMIDISuccess, onMIDIFailure);
 
@@ -129,8 +132,8 @@
 
             const outputs = midiAccess.outputs.values();
             for (let output = outputs.next(); output && !output.done; output = outputs.next()) {
-                midiOutput = output.value; // Use the first available output
-                break; // For now, just use the first output.
+                midiOutput = output.value;
+                break;
             }
              if (!midiOutput) {
                 document.getElementById('midiStatus').innerText = "MIDI Status: No MIDI output device found.";
@@ -184,7 +187,6 @@
             return noteName + octave;
         }
 
-
         function generateEuclideanRhythm(steps, beats, offset, beatEvent, restEvent) {
             const rhythm = new Array(steps).fill(restEvent);
             let count = 0;
@@ -234,7 +236,7 @@
                 alert("No MIDI output device found and no UI notes selected. Please connect MIDI or select UI notes.");
                 return;
             }
-            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes; // Prioritize MIDI notes if available, otherwise use UI notes
+            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
             if (notesToArp.length === 0) {
                 alert("Hold some notes or select UI notes to start the arpeggiator.");
                 return;
@@ -248,7 +250,7 @@
             currentArpNoteIndex = 0;
             currentArpRhythmIndex = 0;
             currentPatternIndex = 0;
-            playbackDisplayElem.innerHTML = ''; // Clear playback display
+            playbackDisplayElem.innerHTML = ''; // Clear playback display here on start!
 
             const clockDivision = parseInt(document.getElementById('clockDivision').value);
             arpInterval = setInterval(arpStep, clockDivision);
@@ -260,7 +262,7 @@
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
             allNotesOff();
-            playbackDisplayElem.innerHTML = ''; // Clear playback display on stop too
+            // playbackDisplayElem.innerHTML = ''; // No need to clear here anymore
         }
 
         function arpStep() {
@@ -269,35 +271,45 @@
                 return;
             }
 
-            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes; // Choose notes source again in case it changed
+            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
             if (notesToArp.length === 0) {
-                stopArpeggiator(); // Stop if no notes to arp anymore
+                stopArpeggiator();
                 return;
             }
 
+            let stepType = ''; // To store step type for visualization
+
             const currentArpRhythmEvent = arpRhythm[currentArpRhythmIndex];
-            const currentPatternEvent = patternRhythm[currentPatternIndex];
 
             if (currentArpRhythmEvent === 'B') { // Beat in Arp Rhythm
-                if (currentPatternEvent === 'N') { // Note in Pattern
-                    const noteToPlay = notesToArp[currentArpNoteIndex % notesToArp.length];
-                    playNote(noteToPlay);
-                    currentArpNoteIndex++;
-                    currentPatternIndex = (currentPatternIndex + 1) % patternRhythm.length;
-                } else if (currentPatternEvent === 'S') { // Skip in Pattern
-                    currentPatternIndex = (currentPatternIndex + 1) % patternRhythm.length;
-                    currentArpNoteIndex++;
+                while (true) { // Loop until a 'Note' is found in pattern or pattern ends
+                    const currentPatternEvent = patternRhythm[currentPatternIndex];
+                    if (currentPatternEvent === 'N') { // Note in Pattern
+                        const noteToPlay = notesToArp[currentArpNoteIndex % notesToArp.length];
+                        playNote(noteToPlay);
+                        currentArpNoteIndex++;
+                        currentPatternIndex = (currentPatternIndex + 1) % patternRhythm.length;
+                        stepType = 'note';
+                        break; // Exit loop after playing note
+                    } else if (currentPatternEvent === 'S') { // Skip in Pattern
+                        currentPatternIndex = (currentPatternIndex + 1) % patternRhythm.length;
+                        currentArpNoteIndex++;
+                        stepType = 'skip';
+                        // Continue loop to check next pattern event with the same arp rhythm beat
+                    } else { // Should not happen ideally, but as a safety, break loop if pattern event is unexpected
+                        stepType = 'error'; // Indicate an error if needed
+                        break;
+                    }
                 }
             } else if (currentArpRhythmEvent === 'R') { // Rest in Arp Rhythm
-                // Do nothing
+                stepType = 'rest';
             }
 
-            currentArpRhythmIndex = (currentArpRhythmIndex + 1) % arpRhythm.length;
+            updatePlaybackDisplay(stepType, (stepType === 'note') ? notesToArp[currentArpNoteIndex % notesToArp.length] : null);
+            currentArpRhythmIndex = (currentArpRhythmIndex + 1) % arpRhythm.length; // Always advance arp rhythm index AFTER processing beat/rest
         }
 
         function playNote(note) {
-            updatePlaybackDisplay(note); // Show note in playback display
-
             if (midiOutput) {
                 midiOutput.send([0x90, note, 100]); // Note On
                 setTimeout(() => { midiOutput.send([0x80, note, 0]); }, 50); // Note Off
@@ -312,21 +324,30 @@
             }
         }
 
-        function updatePlaybackDisplay(note) {
-            const noteElem = document.createElement('div');
-            noteElem.classList.add('playback-note');
-            noteElem.textContent = midiNoteToName(note).replace(/\d+/g, ''); // Display note name without octave
-            playbackDisplayElem.appendChild(noteElem);
+        function updatePlaybackDisplay(stepType, note) {
+            const stepElem = document.createElement('div');
+            stepElem.classList.add('playback-step');
+            stepElem.classList.add(stepType); // Add class for step type styling
 
-            // Keep only a limited number of notes in display for scrolling effect
-            if (playbackDisplayElem.children.length > maxPlaybackNotes) {
+            if (stepType === 'note' && note !== null) {
+                stepElem.textContent = midiNoteToName(note).replace(/\d+/g, ''); // Display note name
+            } else if (stepType === 'rest') {
+                stepElem.textContent = 'R';
+            } else if (stepType === 'skip') {
+                stepElem.textContent = 'S';
+            } else if (stepType === 'error') {
+                stepElem.textContent = '!'; // Indicate error in playback
+            }
+
+            playbackDisplayElem.appendChild(stepElem);
+
+            if (playbackDisplayElem.children.length > maxPlaybackSteps) {
                 playbackDisplayElem.removeChild(playbackDisplayElem.firstChild);
             }
-            playbackDisplayElem.scrollLeft = playbackDisplayElem.scrollWidth; // Auto-scroll to right
+            playbackDisplayElem.scrollLeft = playbackDisplayElem.scrollWidth;
         }
 
-
-        // Event listeners for parameter changes (as before)
+        // Event listeners for parameter changes (same as before)
         document.getElementById('patternSteps').addEventListener('change', updateRhythmDisplays);
         document.getElementById('patternBeats').addEventListener('change', updateRhythmDisplays);
         document.getElementById('patternOffset').addEventListener('change', updateRhythmDisplays);
@@ -335,7 +356,7 @@
         document.getElementById('arpRhythmOffset').addEventListener('change', updateRhythmDisplays);
 
         updateRhythmDisplays();
-        updateUiHeldNotesDisplay(); // Initialize UI notes display
+        updateUiHeldNotesDisplay();
     </script>
 </body>
 </html>
