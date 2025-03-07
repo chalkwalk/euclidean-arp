@@ -4,7 +4,7 @@
     <style>
         body { font-family: sans-serif; }
         .rhythm-display { display: flex; margin-bottom: 10px; }
-        .rhythm-step { width: 20px; height: 20px; border: 1px solid #ccc; text-align: center; line-height: 20px; font-size: 12px; }
+        .rhythm-step { width: 20px; height: 20px; border: 2px solid #ccc; text-align: center; line-height: 20px; font-size: 12px; }
         .beat { background-color: lightgreen; }
         .rest { background-color: lightcoral; }
         .skip { background-color: lightblue; }
@@ -48,6 +48,9 @@
             background-color: lightgreen;
             color: black; /* Ensure text is readable on highlight */
         }
+        .key.key-current { /* New class for current key highlight */
+            border: 2px solid blue; /* Example highlight style */
+        }
         .playback-display { display: flex; overflow-x: hidden; border: 1px solid #ccc; height: 30px; margin-bottom: 10px; }
         .playback-step { width: 20px; height: 20px; border: 1px solid black; margin-right: 2px; text-align: center; line-height: 20px; font-size: 10px; }
         .playback-step.note { background-color: lightyellow; }
@@ -64,12 +67,15 @@
             text-align: right; /* Right-align label text */
         }
         .slider-container input[type="range"] {
-            width: 300px; /* Adjust slider width as needed */
+            width: 150px; /* Adjust slider width as needed */
         }
         .number-display {
             width: 30px; /* Fixed width for number display */
             text-align: center;
             margin-left: 5px;
+        }
+        .rhythm-step.current-step { /* New class for current rhythm step highlight */
+            border: 2px solid blue; /* Example highlight style */
         }
     </style>
 </head>
@@ -293,6 +299,11 @@
         let lastNotesToArp = [];
         let convergeDivergeStep = 0;
         let currentModeNoteList = []; // NEW: Array to hold the current arp mode's note list
+
+        // Variables to track highlighted rhythm steps and piano key
+        let highlightedPatternStep = null;
+        let highlightedArpRhythmStep = null;
+        let highlightedPianoKey = null;
 
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
@@ -637,10 +648,11 @@
         function displayRhythm(rhythmArray, displayElementId) {
             const displayElement = document.getElementById(displayElementId);
             displayElement.innerHTML = '';
-            rhythmArray.forEach(event => {
+            rhythmArray.forEach((event, index) => { // Add index to forEach
                 const stepElement = document.createElement('div');
                 stepElement.classList.add('rhythm-step');
                 stepElement.innerText = event;
+                stepElement.id = `${displayElementId}-step-${index}`; // Unique ID for each step
                 if (event === 'B') stepElement.classList.add('beat');
                 else if (event === 'R') stepElement.classList.add('rest');
                 else if (event === 'S') stepElement.classList.add('skip');
@@ -772,7 +784,7 @@
         }
 
         function resetArpRhythmIndex() {
-            currentArpRhythmIndex = currentArpRhythmIndex % arpRhythm.length;
+            currentArpRhythmIndex = 0;
         }
 
         function advancePatternIndex(steps = 1) {
@@ -780,7 +792,7 @@
         }
 
         function resetPatternIndex() {
-            currentPatternIndex = currentPatternIndex % patternRhythm.length;
+            currentPatternIndex = 0;
         }
 
 
@@ -858,6 +870,7 @@
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
             allNotesOff();
+            unhighlightCurrentStep(); // Clear highlights on stop
             // playbackDisplayElem.innerHTML = ''; // No need to clear here anymore
         }
 
@@ -925,12 +938,15 @@
                 return;
             }
 
+            unhighlightCurrentStep(); // Unhighlight previous steps and key
+
             let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use heldNotes directly
             if (arpSyncMode === 'free' && notesToArp.length === 0) {
                 // In Free Sync mode, if no notes are held, advance rhythms silently
                 advanceArpRhythmIndex();
                 advancePatternIndex();
                 updatePlaybackDisplay('rest', null); // Indicate silent step in Free Sync
+                highlightCurrentStep('rest', null); // Highlight rhythm steps even on rest
                 return; // Exit early, don't play notes
             }
 
@@ -977,10 +993,12 @@
                             advancePatternIndex();
                             stepType = 'note'; // Set stepType to 'note' when a note is played
                             patternEventProcessed = true;
+                            highlightCurrentStep('note', noteForStep); // Highlight note step and key
                         }  else { // No notes to play (e.g., random mode with no held notes)
                             stepType = 'rest';
                             patternEventProcessed = true;
                             advancePatternIndex();
+                            highlightCurrentStep('rest', null); // Highlight rest step
                         }
 
 
@@ -988,17 +1006,23 @@
                         advancePatternIndex();
                         currentArpNoteIndex++;
                         if (arpMode === 'stableShuffled') stableShuffleIndex++;
+                        //stepType = 'skip';
+                        //patternEventProcessed = true;
+                        //highlightCurrentStep('skip', null); // Highlight skip step
                     } else { // Error case
                         stepType = 'error';
                         patternEventProcessed = true;
+                        highlightCurrentStep('error', null); // Highlight error step (though unlikely)
                         break;
                     }
                     if (patternEventProcessed) break;
                 }
             } else if (currentArpRhythmEvent === 'R') { // Rest in Arp Rhythm
                 stepType = 'rest'; // Set stepType to 'rest' for rests
+                highlightCurrentStep('rest', null); // Highlight rest step
             } else {
                 stepType = 'error_arp_rhythm'; // For safety
+                highlightCurrentStep('error', null); // Highlight error step
             }
 
             if (stepType !== null) { // Only update display if stepType is set (i.e., for 'note', 'rest' or 'skip')
@@ -1097,7 +1121,7 @@
             const keyElement = document.getElementById(`pianoKey-${note}`);
             if (!keyElement) return; // Key element might not be created if note is out of range.
 
-            keyElement.classList.remove('key-held-ui', 'key-held-midi'); // Remove any existing held styles
+            keyElement.classList.remove('key-held-ui', 'key-held-midi', 'key-current'); // Remove any existing held and current styles
 
             if (heldNotesUI.has(note) && source === 'ui') {
                 keyElement.classList.add('key-held-ui');
@@ -1107,6 +1131,59 @@
                  keyElement.classList.add('key-held-midi');
             }
              // If neither UI nor MIDI holds it, it will revert to default style due to removal of classes above.
+        }
+
+        function highlightPianoKey(note) {
+            unhighlightPianoKey(); // Unhighlight previous key
+            const keyElement = document.getElementById(`pianoKey-${note}`);
+            if (keyElement) {
+                keyElement.classList.add('key-current');
+                highlightedPianoKey = keyElement;
+            }
+        }
+
+        function unhighlightPianoKey() {
+            if (highlightedPianoKey) {
+                highlightedPianoKey.classList.remove('key-current');
+                highlightedPianoKey = null;
+            }
+        }
+
+        function highlightRhythmStep(displayElementId, stepIndex) {
+            unhighlightRhythmStep(displayElementId); // Unhighlight previous step in this rhythm
+            const stepElement = document.getElementById(`${displayElementId}-step-${stepIndex}`);
+            if (stepElement) {
+                stepElement.classList.add('current-step');
+                if (displayElementId === 'patternDisplay') {
+                    highlightedPatternStep = stepElement;
+                } else if (displayElementId === 'arpRhythmDisplay') {
+                    highlightedArpRhythmStep = stepElement;
+                }
+            }
+        }
+
+        function unhighlightRhythmStep(displayElementId) {
+            if (displayElementId === 'patternDisplay' && highlightedPatternStep) {
+                highlightedPatternStep.classList.remove('current-step');
+                highlightedPatternStep = null;
+            } else if (displayElementId === 'arpRhythmDisplay' && highlightedArpRhythmStep) {
+                highlightedArpRhythmStep.classList.remove('current-step');
+                highlightedArpRhythmStep = null;
+            }
+        }
+
+        function unhighlightCurrentStep() {
+            unhighlightRhythmStep('patternDisplay');
+            unhighlightRhythmStep('arpRhythmDisplay');
+            unhighlightPianoKey();
+        }
+
+        function highlightCurrentStep(stepType, note) {
+            highlightRhythmStep('arpRhythmDisplay', (currentArpRhythmIndex + arpRhythm.length - 1) % arpRhythm.length);
+            highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
+            if (stepType === 'note' && note !== null) {
+                highlightPianoKey(note);
+            }
         }
 
 
