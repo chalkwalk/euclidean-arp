@@ -190,6 +190,7 @@
             <option value="played">Played</option>
             <option value="shuffled">Shuffled</option>
             <option value="stableShuffled">Stable Shuffled</option>
+            <option value="chord">Chord</option>
         </select><br>
 
         <label for="arpSyncMode">Arp Sync Mode:</label>
@@ -862,6 +863,9 @@
         /** @returns {number[]} - Returns the stable shuffled note order. */
         function generateStableShuffledNoteList(notes) { return stableShuffledOrder; }
 
+        /** @returns {number[]} - Returns all held notes as a chord. */
+        function generateChordNoteList(notes) { return [...notes]; }
+
 
         /**
          * Updates the currentModeNoteList based on the selected arpeggio mode and held notes.
@@ -879,6 +883,7 @@
                 case 'random': currentModeNoteList = generateRandomNoteList(notesToArp); break;
                 case 'shuffled': currentModeNoteList = generateShuffledNoteList(notesToArp); break;
                 case 'stableShuffled': currentModeNoteList = generateStableShuffledNoteList(notesToArp); break;
+                case 'chord': currentModeNoteList = generateChordNoteList(notesToArp); break;
                 default: currentModeNoteList = generateUpNoteList(notesToArp); break; // 'up' is default
             }
         }
@@ -1106,26 +1111,47 @@
                 while (!patternEventProcessed) {
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
                     if (currentPatternEvent === 'N') { // Note in Pattern
-                        if (currentModeNoteList.length > 0 && arpMode !== 'random') {
+                        if (arpMode === 'chord') { // Chord Mode Logic
+                            if (currentModeNoteList.length > 0) {
+                                playChord(currentModeNoteList);
+                                stepType = 'note';
+                                highlightCurrentStep('note', null, true); // Indicate chord with highlightAllKeys=true
+                                patternEventProcessed = true;
+                            } else {
+                                stepType = 'rest';
+                                patternEventProcessed = true;
+                                highlightCurrentStep('rest', null);
+                            }
+                        }
+                        else if (currentModeNoteList.length > 0 && arpMode !== 'random') { // Regular Arp Modes
                             noteForStep = currentModeNoteList[currentArpNoteIndex % currentModeNoteList.length];
                         } else if (arpMode === 'random' && notesToArp.length > 0) {
                             noteForStep = notesToArp[Math.floor(Math.random() * notesToArp.length)];
                         }
 
-                        if (noteForStep !== '') {
-                            playNote(noteForStep);
-                            currentArpNoteIndex++;
-                            if (arpMode === 'stableShuffled') stableShuffleIndex++;
-                            advancePatternIndex();
-                            stepType = 'note';
-                            highlightCurrentStep('note', noteForStep);
-                            patternEventProcessed = true;
-                        }  else {
+                        if (arpMode !== 'chord') { // Play single note for non-chord modes
+                            if (noteForStep !== '') {
+                                playNote(noteForStep);
+                                currentArpNoteIndex++;
+                                if (arpMode === 'stableShuffled') stableShuffleIndex++;
+                                advancePatternIndex();
+                                stepType = 'note';
+                                highlightCurrentStep('note', noteForStep);
+                                patternEventProcessed = true;
+                            }  else {
+                                stepType = 'rest';
+                                patternEventProcessed = true;
+                                advancePatternIndex();
+                                highlightCurrentStep('rest', null);
+                            }
+                        } else if (arpMode === 'chord' && currentModeNoteList.length === 0) {
                             stepType = 'rest';
                             patternEventProcessed = true;
                             advancePatternIndex();
                             highlightCurrentStep('rest', null);
                         }
+
+
                     } else if (currentPatternEvent === 'S') { // Skip in Pattern
                         advancePatternIndex();
                         currentArpNoteIndex++;
@@ -1147,7 +1173,7 @@
             }
 
             if (stepType !== null) {
-                updatePlaybackDisplay(stepType, (stepType === 'note') ? noteForStep : null);
+                updatePlaybackDisplay(stepType, (stepType === 'note' && arpMode !== 'chord') ? noteForStep : null, arpMode === 'chord');
             }
             advanceArpRhythmIndex();
         }
@@ -1170,6 +1196,29 @@
             }
         }
 
+        /**
+         * Sends MIDI note on and note off messages for a chord (multiple notes).
+         * @param {number[]} notes - Array of MIDI note numbers to play as a chord.
+         */
+        function playChord(notes) {
+            if (midiOutput) {
+                let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
+                for (const note of notes) {
+                    if (mpeOutputMode === 'mpe') {
+                        midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, 100]); // Pitch Bend, Note On
+                    } else {
+                        midiOutput.send([0x90 + outputChannel, note, 100]); // Note On
+                    }
+                }
+                setTimeout(() => {
+                    for (const note of notes) {
+                        midiOutput.send([0x80 + outputChannel, note, 0]); // Note Off for each note
+                    }
+                }, 50);
+            }
+        }
+
+
         /** Sends MIDI note off messages for all held notes. */
         function allNotesOff() {
             if (midiOutput) {
@@ -1184,16 +1233,21 @@
          * Updates the playback display with the latest arpeggiator step.
          * @param {string} stepType - Type of step ('note', 'rest', 'skip', 'error').
          * @param {number|null} note - MIDI note number for 'note' steps, null otherwise.
+         * @param {boolean} isChord - True if a chord was played in this step, false otherwise.
          */
-        function updatePlaybackDisplay(stepType, note) {
+        function updatePlaybackDisplay(stepType, note, isChord = false) {
             if (stepType === null) return;
 
             const stepElem = document.createElement('div');
             stepElem.classList.add('playback-step');
             stepElem.classList.add(stepType);
 
-            if (stepType === 'note' && note !== null) {
-                stepElem.textContent = midiNoteToName(note);
+            if (stepType === 'note') {
+                if (isChord) {
+                    stepElem.textContent = 'Ch'; // Display 'Ch' for chord
+                } else if (note !== null) {
+                    stepElem.textContent = midiNoteToName(note);
+                }
             } else if (stepType === 'rest') {
                 stepElem.textContent = 'R';
             } else if (stepType === 'skip') {
@@ -1289,14 +1343,28 @@
             }
         }
 
-        /** Unhighlights the currently highlighted piano key. */
-        function unhighlightPianoKey() {
-            if (highlightedPianoKey) {
-                highlightedPianoKey.classList.remove('key-current');
-                highlightedPianoKey = null;
-            }
+        /**
+         * Highlights all held piano keys in the UI to indicate a chord is being played.
+         */
+        function highlightPianoKeysForChord() {
+            unhighlightPianoKey(); // Clear any single note highlights first
+            heldNotes.forEach(note => {
+                const keyElement = document.getElementById(`pianoKey-${note}`);
+                if (keyElement) {
+                    keyElement.classList.add('key-current');
+                }
+            });
         }
 
+        /** Unhighlights all highlighted piano keys. */
+        function unhighlightPianoKey() {
+	            const currentHighlightedKeys = document.querySelectorAll('#pianoKeyboard .key.key-current');
+	            currentHighlightedKeys.forEach(key => {
+	                key.classList.remove('key-current');
+	            });
+	            highlightedPianoKey = null; // Optionally reset highlightedPianoKey as well
+        }
+        
         /**
          * Highlights a rhythm step in the UI to indicate it's the current step.
          * Unhighlights any previously highlighted step in the same rhythm display.
@@ -1330,17 +1398,28 @@
             unhighlightPianoKey();
         }
 
+
         /**
          * Highlights the current arpeggiator step in the UI (rhythm steps and piano key).
          * @param {string} stepType - Type of step ('note', 'rest', 'skip').
          * @param {number|null} note - MIDI note number to highlight on the piano key, null otherwise.
+         * @param {boolean} highlightAllKeys - If true, highlights all held keys (for chord mode).
          */
-        function highlightCurrentStep(stepType, note) {
+        function highlightCurrentStep(stepType, note, highlightAllKeys = false) {
+            unhighlightPianoKey(); // Always unhighlight keys at the start of highlightCurrentStep
+            console.log("stepType:", stepType);
+
             highlightRhythmStep('arpRhythmDisplay', (currentArpRhythmIndex + arpRhythm.length - 1) % arpRhythm.length);
             highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
-            if (stepType === 'note' && note !== null) {
-                highlightPianoKey(note);
+
+            if (stepType === 'note') {
+                if (highlightAllKeys) {
+                    highlightPianoKeysForChord(); // Highlight all held keys for chord mode
+                } else if (note !== null) {
+                    highlightPianoKey(note); // Highlight single note for other modes
+                }
             }
+            // If stepType is 'rest' or 'skip', we unhighlighted at the start, and do nothing more with piano keys, which is correct.
         }
 
 
