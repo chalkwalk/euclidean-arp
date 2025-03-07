@@ -77,6 +77,9 @@
         .rhythm-step.current-step { /* New class for current rhythm step highlight */
             border: 2px solid blue; /* Example highlight style */
         }
+        #chordNControls {
+            display: none; /* Initially hidden */
+        }
     </style>
 </head>
 <body>
@@ -191,7 +194,16 @@
             <option value="shuffled">Shuffled</option>
             <option value="stableShuffled">Stable Shuffled</option>
             <option value="chord">Chord</option>
+            <option value="chordN">ChordN</option>
         </select><br>
+
+        <div id="chordNControls">
+            <div class="slider-container">
+                <label for="chordNValue">N:</label>
+                <input type="range" id="chordNValue" value="2" min="1" max="16" step="1">
+                <span id="chordNValueDisplay" class="number-display">2</span>
+            </div>
+        </div><br>
 
         <label for="arpSyncMode">Arp Sync Mode:</label>
         <select id="arpSyncMode">
@@ -297,6 +309,7 @@
         let arpMode = 'up';             // Arpeggio mode (up, down, etc.)
         let arpSyncMode = 'free';        // Arpeggio sync mode (free, key, transport)
         let currentModeNoteList = [];    // Array holding notes for the current arp mode
+        let chordNValue = 2;             // Default N value for ChordN mode
 
         // --- MPE and MIDI Channel Settings ---
         let isMPEEnabled = false;
@@ -348,6 +361,12 @@
             arpMode = this.value;
             updateModeNoteList();
             currentArpNoteIndex = 0;
+            const chordNControls = document.getElementById('chordNControls');
+            if (arpMode === 'chordN') {
+                chordNControls.style.display = 'block';
+            } else {
+                chordNControls.style.display = 'none';
+            }
         });
 
         /**
@@ -444,6 +463,16 @@
             if (tempoSource === 'internal') {
                 setupInternalClock();
             }
+        });
+
+        /**
+         * Event listener for changes to the ChordN Value slider.
+         * Updates the N value for ChordN mode.
+         */
+        document.getElementById('chordNValue').addEventListener('input', function() {
+            chordNValue = parseInt(this.value);
+            document.getElementById('chordNValueDisplay').textContent = chordNValue;
+            updateModeNoteList(); // Re-generate note list when N changes
         });
 
 
@@ -866,6 +895,33 @@
         /** @returns {number[]} - Returns all held notes as a chord. */
         function generateChordNoteList(notes) { return [...notes]; }
 
+        /**
+         * Generates a list of chord combinations from held notes for ChordN mode.
+         * @param {number[]} notes - Held MIDI notes.
+         * @param {number} n - Number of notes per chord in ChordN.
+         * @returns {number[][]} - List of chord combinations.
+         */
+        function generateChordNNoteList(notes, n) {
+            if (notes.length === 0 || n <= 0) return [];
+            n = Math.min(n, notes.length); // Limit n to the number of held notes
+
+            const combinations = [];
+            function combine(currentCombination, startIndex) {
+                if (currentCombination.length === n) {
+                    combinations.push([...currentCombination]); // Add a copy of the combination
+                    return;
+                }
+
+                for (let i = startIndex; i < notes.length; i++) {
+                    currentCombination.push(notes[i]);
+                    combine(currentCombination, i + 1); // Ensure notes are added in ascending order
+                    currentCombination.pop(); // Backtrack
+                }
+            }
+            combine([], 0);
+            return combinations;
+        }
+
 
         /**
          * Updates the currentModeNoteList based on the selected arpeggio mode and held notes.
@@ -884,6 +940,7 @@
                 case 'shuffled': currentModeNoteList = generateShuffledNoteList(notesToArp); break;
                 case 'stableShuffled': currentModeNoteList = generateStableShuffledNoteList(notesToArp); break;
                 case 'chord': currentModeNoteList = generateChordNoteList(notesToArp); break;
+                case 'chordN': currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue); break;
                 default: currentModeNoteList = generateUpNoteList(notesToArp); break; // 'up' is default
             }
         }
@@ -1111,9 +1168,18 @@
                 while (!patternEventProcessed) {
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
                     if (currentPatternEvent === 'N') { // Note in Pattern
-                        if (arpMode === 'chord') { // Chord Mode Logic
+                        if (arpMode === 'chord' || arpMode === 'chordN') { // Chord Mode Logic
                             if (currentModeNoteList.length > 0) {
-                                playChord(currentModeNoteList);
+                                let chordToPlay;
+                                if (arpMode === 'chordN') {
+                                    chordToPlay = currentModeNoteList[currentArpNoteIndex % currentModeNoteList.length];
+                                    highlightPianoKeysForChord(chordToPlay); // Highlight only current chord notes for ChordN
+                                } else { // arpMode === 'chord'
+                                    chordToPlay = currentModeNoteList;
+                                    highlightPianoKeysForChord(chordToPlay); // Highlight all chord notes for Chord
+                                }
+                                playChord(chordToPlay);
+                                advancePatternIndex();
                                 stepType = 'note';
                                 highlightCurrentStep('note', null, true); // Indicate chord with highlightAllKeys=true
                                 patternEventProcessed = true;
@@ -1129,7 +1195,7 @@
                             noteForStep = notesToArp[Math.floor(Math.random() * notesToArp.length)];
                         }
 
-                        if (arpMode !== 'chord') { // Play single note for non-chord modes
+                        if (arpMode !== 'chord' && arpMode !== 'chordN') { // Play single note for non-chord modes
                             if (noteForStep !== '') {
                                 playNote(noteForStep);
                                 currentArpNoteIndex++;
@@ -1144,11 +1210,14 @@
                                 advancePatternIndex();
                                 highlightCurrentStep('rest', null);
                             }
-                        } else if (arpMode === 'chord' && currentModeNoteList.length === 0) {
+                        } else if ((arpMode === 'chord' || arpMode === 'chordN') && currentModeNoteList.length === 0) {
                             stepType = 'rest';
                             patternEventProcessed = true;
                             advancePatternIndex();
                             highlightCurrentStep('rest', null);
+                        }
+                        if (arpMode === 'chordN') {
+                            currentArpNoteIndex++; // Advance chord index for chordN mode
                         }
 
 
@@ -1173,7 +1242,7 @@
             }
 
             if (stepType !== null) {
-                updatePlaybackDisplay(stepType, (stepType === 'note' && arpMode !== 'chord') ? noteForStep : null, arpMode === 'chord');
+                updatePlaybackDisplay(stepType, (stepType === 'note' && arpMode !== 'chord' && arpMode !== 'chordN') ? noteForStep : null, (arpMode === 'chord' || arpMode === 'chordN'));
             }
             advanceArpRhythmIndex();
         }
@@ -1244,7 +1313,11 @@
 
             if (stepType === 'note') {
                 if (isChord) {
-                    stepElem.textContent = 'Ch'; // Display 'Ch' for chord
+                    if (arpMode === 'chordN') {
+                        stepElem.textContent = `Ch${((currentArpNoteIndex + currentModeNoteList.length - 1) % currentModeNoteList.length) + 1}`; // Display 'Ch1', 'Ch2' etc for ChordN
+                    } else {
+                        stepElem.textContent = 'Ch'; // Display 'Ch' for chord
+                    }
                 } else if (note !== null) {
                     stepElem.textContent = midiNoteToName(note);
                 }
@@ -1344,17 +1417,21 @@
         }
 
         /**
-         * Highlights all held piano keys in the UI to indicate a chord is being played.
+         * Highlights a specific set of piano keys in the UI to indicate a chord is being played.
+         * @param {number[]} chordNotes - Array of MIDI note numbers to highlight as a chord.
          */
-        function highlightPianoKeysForChord() {
+        function highlightPianoKeysForChord(chordNotes) {
             unhighlightPianoKey(); // Clear any single note highlights first
-            heldNotes.forEach(note => {
-                const keyElement = document.getElementById(`pianoKey-${note}`);
-                if (keyElement) {
-                    keyElement.classList.add('key-current');
-                }
-            });
+            if (chordNotes && chordNotes.length > 0) { // Check if chordNotes is valid
+                chordNotes.forEach(note => {
+                    const keyElement = document.getElementById(`pianoKey-${note}`);
+                    if (keyElement) {
+                        keyElement.classList.add('key-current');
+                    }
+                });
+            }
         }
+
 
         /** Unhighlights all highlighted piano keys. */
         function unhighlightPianoKey() {
@@ -1364,7 +1441,7 @@
 	            });
 	            highlightedPianoKey = null; // Optionally reset highlightedPianoKey as well
         }
-        
+
         /**
          * Highlights a rhythm step in the UI to indicate it's the current step.
          * Unhighlights any previously highlighted step in the same rhythm display.
@@ -1407,14 +1484,16 @@
          */
         function highlightCurrentStep(stepType, note, highlightAllKeys = false) {
             unhighlightPianoKey(); // Always unhighlight keys at the start of highlightCurrentStep
-            console.log("stepType:", stepType);
 
             highlightRhythmStep('arpRhythmDisplay', (currentArpRhythmIndex + arpRhythm.length - 1) % arpRhythm.length);
             highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
 
             if (stepType === 'note') {
-                if (highlightAllKeys) {
-                    highlightPianoKeysForChord(); // Highlight all held keys for chord mode
+                if (arpMode === 'chordN') {
+                    const currentChord = currentModeNoteList[currentArpNoteIndex % currentModeNoteList.length];
+                    highlightPianoKeysForChord(currentChord); // Highlight specific chord notes for ChordN
+                } else if (highlightAllKeys) {
+                    highlightPianoKeysForChord(heldNotes); // Highlight all held keys for chord mode
                 } else if (note !== null) {
                     highlightPianoKey(note); // Highlight single note for other modes
                 }
@@ -1444,6 +1523,17 @@
             arpMode = this.value;
             updateModeNoteList();
             currentArpNoteIndex = 0;
+            const chordNControls = document.getElementById('chordNControls');
+            if (arpMode === 'chordN') {
+                chordNControls.style.display = 'block';
+            } else {
+                chordNControls.style.display = 'none';
+            }
+        });
+        document.getElementById('chordNValue').addEventListener('input', function() {
+            chordNValue = parseInt(this.value);
+            document.getElementById('chordNValueDisplay').textContent = chordNValue;
+            updateModeNoteList(); // Update note list when chordN value changes
         });
 
 
@@ -1451,6 +1541,7 @@
         generatePianoKeyboardUI();
         updateRhythmDisplays();
         updateModeNoteList(); // Initial note list generation on load
+        document.getElementById('chordNValueDisplay').textContent = chordNValue; // Initialize ChordN display
 
     </script>
 </body>
