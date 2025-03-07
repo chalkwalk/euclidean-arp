@@ -47,20 +47,20 @@
     <div class="parameter-group">
         <h3>Pattern</h3>
         <label for="patternSteps">Steps:</label>
-        <input type="number" id="patternSteps" value="4" min="1">
+        <input type="number" id="patternSteps" value="1" min="1">
         <label for="patternBeats">Beats:</label>
-        <input type="number" id="patternBeats" value="3" min="1">
+        <input type="number" id="patternBeats" value="1" min="1">
         <label for="patternOffset">Offset:</label>
-        <input type="number" id="patternOffset" value="1" min="0">
+        <input type="number" id="patternOffset" value="0" min="0">
         <div id="patternDisplay" class="rhythm-display"></div>
     </div>
 
     <div class="parameter-group">
         <h3>Arp Rhythm</h3>
         <label for="arpRhythmSteps">Steps:</label>
-        <input type="number" id="arpRhythmSteps" value="5" min="1">
+        <input type="number" id="arpRhythmSteps" value="1" min="1">
         <label for="arpRhythmBeats">Beats:</label>
-        <input type="number" id="arpRhythmBeats" value="3" min="1">
+        <input type="number" id="arpRhythmBeats" value="1" min="1">
         <label for="arpRhythmOffset">Offset:</label>
         <input type="number" id="arpRhythmOffset" value="0" min="0">
         <div id="arpRhythmDisplay" class="rhythm-display"></div>
@@ -81,7 +81,7 @@
             <option value="diverge">Diverge</option>
             <option value="played">Played</option>
             <option value="shuffled">Shuffled</option>
-            <option value="stableShuffle">Stable Shuffle</option>
+            <option value="stableShuffled">Stable Shuffled</option>
         </select><br>
 
         <input type="checkbox" id="enableMPE">
@@ -166,15 +166,12 @@
 
         // State variables for different arp modes
         let upDownDirection = 1; // 1 for up, -1 for down, for upDown modes
-        let convergeDivergeDirection = 1; // 1 for converge (inward), -1 for diverge (outward)
-        let convergeStartIndex = 0;
-        let convergeEndIndex = 0;
-        let divergeStartIndex = 0;
-        let divergeEndIndex = 0;
+        let convergeDivergeDirection = 1 // 1 for converge, -1 for diverge
         let shuffledNotesOrder = [];
-        let stableShuffleOrder = [];
+        let stableShuffledOrder = [];
         let stableShuffleIndex = 0;
-
+        let lastNotesToArp = []; // To detect if notes have changed for stable shuffle
+        let convergeDivergeStep = 0; // Track step in converge/diverge cycles
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
@@ -374,39 +371,41 @@
                         return notesToArp[notesToArp.length - 2 - (upDownIndex - notesToArp.length)];
                     }
                 case 'upDownInclusive':
-                    const upDownInclusiveLength = 2 * notesToArp.length - 2;
+                    const upDownInclusiveLength = 2 * notesToArp.length - 1; // Corrected length for inclusive up/down
                     const upDownInclusiveIndex = currentArpNoteIndex % upDownInclusiveLength;
                     if (upDownInclusiveIndex < notesToArp.length) {
                         return notesToArp[upDownInclusiveIndex];
                     } else {
-                        return notesToArp[upDownInclusiveLength - upDownInclusiveIndex];
+                        return notesToArp[upDownInclusiveLength - 1 - upDownInclusiveIndex]; // Corrected index for inclusive up/down
                     }
                 case 'converge':
-                    if (convergeStartIndex > convergeEndIndex) {
-                        convergeDirection = -1; // Switch to diverge after converge cycle
-                        convergeStartIndex = 0;
-                        convergeEndIndex = notesToArp.length -1;
+                    let convergeStep = currentArpNoteIndex % notesToArp.length;
+                    let conNote;
+                    let conAbsoluteIndex = Math.floor(convergeStep / 2);
+                    if (convergeStep % 2 === 0) {
+                    	conNote = notesToArp[conAbsoluteIndex];
+                    } else {
+                        conNote = notesToArp.at(-1-conAbsoluteIndex);
                     }
-                    const convergeNote = notesToArp[convergeStartIndex];
-                    convergeStartIndex++;
-                    return convergeNote;
+                    return conNote;
                 case 'diverge':
-                    if (divergeStartIndex > divergeEndIndex) {
-                        divergeDirection = 1; // Switch to converge after diverge cycle
-                        divergeStartIndex = 0;
-                        divergeEndIndex = notesToArp.length -1;
+                    let divergeStep = currentArpNoteIndex % notesToArp.length;
+                    let divNote;
+                    let divAbsoluteIndex = Math.floor((notesToArp.length - 1 - divergeStep) / 2);
+                    if (divergeStep % 2 === 0) {
+                    	divNote = notesToArp[divAbsoluteIndex];
+                    } else {
+                        divNote = notesToArp.at(-1-divAbsoluteIndex);
                     }
-                    const divergeNote = notesToArp[divergeEndIndex];
-                    divergeEndIndex--;
-                    return divergeNote;
+                    return divNote;
                 case 'played':
                     return notesToArp[currentArpNoteIndex % notesToArp.length]; // Same as 'up' for now, can be modified to remember played order if needed.
                 case 'random':
                     return notesToArp[Math.floor(Math.random() * notesToArp.length)];
                 case 'shuffled':
                     return shuffledNotesOrder[currentArpNoteIndex % shuffledNotesOrder.length];
-                case 'stableShuffle':
-                    return stableShuffleOrder[stableShuffleIndex % stableShuffleOrder.length];
+                case 'stableShuffled':
+                    return stableShuffledOrder[stableShuffledIndex % stableShuffledOrder.length];
                 default: // 'up' is default
                     return notesToArp[currentArpNoteIndex % notesToArp.length];
             }
@@ -442,24 +441,19 @@
             // Sort notes for Up/Down, Converge/Diverge modes to work predictably
             notesToArp.sort((a, b) => a - b);
 
+            // Check if notes have changed for stable shuffle reset
+            if (!arraysAreEqual(notesToArp, lastNotesToArp)) {
+                stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+                lastNotesToArp = [...notesToArp]; // Update last notes
+            }
+
             // Initialize mode specific variables on start
             upDownDirection = 1;
-            convergeDirection = 1;
-            convergeStartIndex = 0;
-            convergeEndIndex = notesToArp.length - 1;
-            divergeDirection = -1; // Diverge starts from end and moves inward
-            divergeStartIndex = 0;
-            divergeEndIndex = notesToArp.length - 1;
+            convergeDivergeDirection = 1;
 
-            // Shuffle notes for shuffled mode on start
+            // Shuffle notes for shuffled mode on start (and every restart)
             shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-
-            // Create stable shuffle order if not already created or if notes have changed.
-            if (stableShuffleOrder.length !== notesToArp.length || !stableShuffleOrder.every((note, index) => note === notesToArp[index])) {
-                stableShuffleOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-            }
-            stableShuffleIndex = 0;
-
+            stableShuffledIndex = 0;
 
             arpRunning = true;
             document.getElementById('startButton').disabled = true;
@@ -501,7 +495,8 @@
             const currentArpRhythmEvent = arpRhythm[currentArpRhythmIndex];
 
             if (currentArpRhythmEvent === 'B') { // Beat in Arp Rhythm
-                while (true) { // Loop until a 'Note' is found in pattern or pattern ends
+                let patternEventProcessed = false; // Flag to ensure pattern advances only once per arp rhythm beat
+                while (!patternEventProcessed) { // Loop until a pattern event is processed or pattern rhythm index changes
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
                     if (currentPatternEvent === 'N') { // Note in Pattern
                         const noteToPlay = getArpNote(notesToArp); // Use getArpNote function
@@ -509,20 +504,23 @@
                             playNote(noteToPlay);
                         }
                         currentArpNoteIndex++;
-                        if (arpMode === 'stableShuffle') stableShuffleIndex++; // Advance stable shuffle index
+                        if (arpMode === 'stableShuffled') stableShuffledIndex++; // Advance stable shuffle index
                         advancePatternIndex(); // Advance pattern index using method
                         stepType = 'note';
-                        break; // Exit loop after playing note
+                        patternEventProcessed = true; // Pattern event processed, exit loop
                     } else if (currentPatternEvent === 'S') { // Skip in Pattern
                         advancePatternIndex(); // Advance pattern index using method
                         currentArpNoteIndex++;
-                        if (arpMode === 'stableShuffle') stableShuffleIndex++; // Advance stable shuffle index
+                        if (arpMode === 'stableShuffled') stableShuffledIndex++; // Advance stable shuffle index
                         stepType = 'skip';
-                        // Continue loop to check next pattern event with the same arp rhythm beat
+                        patternEventProcessed = true; // Pattern event processed, exit loop
+                        // Continue loop to check next pattern event with the same arp rhythm beat - No, Skip should just skip and move on.
                     } else { // Should not happen ideally, but as a safety, break loop if pattern event is unexpected
                         stepType = 'error'; // Indicate an error if needed
+                        patternEventProcessed = true; // Exit loop in case of error
                         break;
                     }
+                    if (patternEventProcessed) break; // Ensure loop exits after processing a pattern event
                 }
             } else if (currentArpRhythmEvent === 'R') { // Rest in Arp Rhythm
                 stepType = 'rest';
@@ -577,6 +575,16 @@
             playbackDisplayElem.scrollLeft = playbackDisplayElem.scrollWidth;
         }
 
+        // Helper function to compare arrays for stable shuffled reset
+        function arraysAreEqual(arr1, arr2) {
+            if (arr1.length !== arr2.length) return false;
+            for (let i = 0; i < arr1.length; i++) {
+                if (arr1[i] !== arr2[i]) return false;
+            }
+            return true;
+        }
+
+
         // Event listeners for parameter changes (same as before)
         document.getElementById('patternSteps').addEventListener('change', updateRhythmDisplays);
         document.getElementById('patternBeats').addEventListener('change', updateRhythmDisplays);
@@ -584,6 +592,26 @@
         document.getElementById('arpRhythmSteps').addEventListener('change', updateRhythmDisplays);
         document.getElementById('arpRhythmBeats').addEventListener('change', updateRhythmDisplays);
         document.getElementById('arpRhythmOffset').addEventListener('change', updateRhythmDisplays);
+        document.getElementById('arpMode').addEventListener('change', function() {
+             // Reset indices when changing arp mode for modes that use them
+            if (['converge', 'diverge'].includes(this.value)) {
+                let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                convergeStartIndex = 0;
+                convergeEndIndex = notesToArp.length > 0 ? notesToArp.length - 1 : 0;
+                divergeStartIndex = Math.floor(notesToArp.length / 2); // Reset diverge start to middle
+                divergeEndIndex = Math.ceil(notesToArp.length / 2) - 1; // Reset diverge end to middle (or just below)
+                convergeDivergeStep = 0; // Reset step counter for converge/diverge
+            } else if (this.value === 'stableShuffled') {
+                 let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+                 stableShuffledIndex = 0;
+            } else if (this.value === 'shuffled') {
+                let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+            }
+            arpMode = this.value;
+        });
+
 
         updateRhythmDisplays();
         updateUiHeldNotesDisplay();
