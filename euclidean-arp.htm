@@ -357,6 +357,7 @@
 
         // MPE CHANNEL PRESSURE FIX - START
         let mpeChannelNotes = new Array(16).fill(null); // Track notes per MPE channel
+        let noteMPEYAxis = new Map(); // Stores MPE Y Axis values
         // MPE CHANNEL PRESSURE FIX - END
 
         // --- Tempo and Clock Variables ---
@@ -385,6 +386,7 @@
 
         // -- Miscellaneous constants --
         const defaultNotePressure = 0; // Pressure that new notes get initialized to
+        const defaultMpeYAxis = 0; // MPE Y value that new notes get initialized to
 
         /**
          * Event listeners for UI controls.
@@ -674,6 +676,7 @@
             }
 
             notePressures.set(note, defaultNotePressure);
+            noteMPEYAxis.set(note, defaultMpeYAxis);
             updateHeldNotesDisplay();
 
             if (arpSyncMode === 'key' && !arpRunning) {
@@ -728,6 +731,7 @@
             }
 
             notePressures.delete(note); // Remove pressure data for released note
+            noteMPEYAxis.delete(note);
             updateHeldNotesDisplay();
 
             if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
@@ -1258,20 +1262,31 @@
                 } else if (commandHiBits === 0x80) { // Note Off
                     noteOff(note, 'midi', channel); // MPE CHANNEL PRESSURE FIX - Pass channel to noteOff
                 } else if (commandHiBits === 0xA0) { // Polyphonic Aftertouch (0xA0-0xAF)
+                    const pressure = velocity;
                     if (notePressures.has(note)) {
-                        notePressures.set(note, velocity); // velocity byte is pressure in poly aftertouch
+                        notePressures.set(note, pressure); // velocity byte is pressure in poly aftertouch
+                    }
+                } else if (commandHiBits == 0xB0) { // MIDI CC
+                	const ccNumber = note;
+                    const ccValue = velocity;
+                    const channelNote = mpeChannelNotes[channel];
+                    if (isMPEEnabled && ccNumber == 74) {
+	                    if (channelNote !== null && noteMPEYAxis.has(channelNote)) {
+	                        noteMPEYAxis.set(channelNote, ccValue);
+	                    }
                     }
                 } else if (commandHiBits === 0xD0) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
+                    const pressure = note;
                     // MPE CHANNEL PRESSURE FIX - START
                     if (isMPEEnabled) {
                         const channelNote = mpeChannelNotes[channel];
                         if (channelNote !== null && notePressures.has(channelNote)) {
-                            notePressures.set(channelNote, note); // Note byte is pressure in channel pressure
+                            notePressures.set(channelNote, pressure); // Note byte is pressure in channel pressure
                         }
                     } else { // Non-MPE Channel Pressure - Apply to all held MIDI notes (original behavior)
                         heldNotesMIDI.forEach(heldNote => {
                             if (notePressures.has(heldNote)) {
-                                notePressures.set(heldNote, note); // note byte is pressure in channel pressure
+                                notePressures.set(heldNote, pressure); // note byte is pressure in channel pressure
                             }
                         });
                     }
