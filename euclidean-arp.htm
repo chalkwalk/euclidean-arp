@@ -451,13 +451,7 @@
 
 
             updateHeldNotesDisplay();
-             // For stable shuffle, re-shuffle on note change
-            if (arpMode === 'stableShuffled' && arpRunning) {
-                let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use empty array if no held notes
-                stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-                stableShuffleIndex = 0; // Reset index as notes changed
-                lastNotesToArp = [...notesToArp]; // Update last notes
-            }
+
             // Key Sync: Start arp if it's in key sync mode and not already running
             if (arpSyncMode === 'key' && !arpRunning) {
                 startArpeggiator(); // Start the arpeggiator when the first note is pressed in Key Sync mode
@@ -465,6 +459,24 @@
             updateModeNoteList(); // NEW: Update note list on note change
             currentArpNoteIndex = 0; // Reset index on note change (for now)
 
+            // --- SHUFFLED/STABLE SHUFFLED NOTE ADDITION ---
+            if (arpMode === 'shuffled' && arpRunning && shuffledNotesOrder.length > 0) { // Added length check
+                const insertionIndex = Math.floor(Math.random() * shuffledNotesOrder.length); // Random insertion index
+                shuffledNotesOrder.splice(insertionIndex, 0, note); // Insert note at random index
+                if (insertionIndex <= currentArpNoteIndex) {
+                    currentArpNoteIndex++; // Increment index if insertion is before or at current index
+                }
+            } else if (arpMode === 'stableShuffled' && arpRunning && stableShuffledOrder.length > 0) { // Added length check
+                const insertionIndex = Math.floor(Math.random() * stableShuffledOrder.length); // Random insertion index
+                stableShuffledOrder.splice(insertionIndex, 0, note); // Insert note at random index
+                 if (insertionIndex <= stableShuffleIndex) {
+                    stableShuffleIndex++; // Increment index if insertion is before or at current index
+                }
+            } else if (arpMode === 'shuffled' && arpRunning && shuffledNotesOrder.length === 0) {
+                shuffledNotesOrder.push(note); // If list is empty, just push
+            } else if (arpMode === 'stableShuffled' && arpRunning && stableShuffledOrder.length === 0) {
+                stableShuffledOrder.push(note); // If list is empty, just push
+            }
         }
 
         function noteOff(note, source = 'ui') {
@@ -478,19 +490,39 @@
             }
 
             updateHeldNotesDisplay();
-             // For stable shuffle, re-shuffle on note change
-            if (arpMode === 'stableShuffled' && arpRunning) {
-                let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use empty array if no held notes
-                stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-                stableShuffleIndex = 0; // Reset index as notes changed
-                lastNotesToArp = [...notesToArp]; // Update last notes
-            }
             // Key Sync: Stop arp if it's in key sync mode and no notes are held
             if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
                 stopArpeggiator(); // Stop the arpeggiator when the last note is released in Key Sync mode
             }
             updateModeNoteList(); // NEW: Update note list on note change
             currentArpNoteIndex = 0; // Reset index on note change (for now)
+
+            // --- SHUFFLED/STABLE SHUFFLED NOTE REMOVAL ---
+            if (arpMode === 'shuffled' && arpRunning) {
+                const noteIndex = shuffledNotesOrder.indexOf(note);
+                if (noteIndex !== -1) {
+                    shuffledNotesOrder.splice(noteIndex, 1); // Remove note from shuffled list
+                    if (noteIndex < currentArpNoteIndex && currentArpNoteIndex > 0) { // Changed <= to <
+                        currentArpNoteIndex--; // Decrement index if removal is before current index
+                    } else if (currentArpNoteIndex >= shuffledNotesOrder.length && shuffledNotesOrder.length > 0) {
+                        currentArpNoteIndex = shuffledNotesOrder.length - 1; // Correct index if it's out of bounds after removal
+                    } else if (shuffledNotesOrder.length === 0) {
+                        currentArpNoteIndex = 0; // Reset to 0 if list becomes empty
+                    }
+                }
+            } else if (arpMode === 'stableShuffled' && arpRunning) {
+                const noteIndex = stableShuffledOrder.indexOf(note);
+                if (noteIndex !== -1) {
+                    stableShuffledOrder.splice(noteIndex, 1); // Remove from stable shuffled list
+                    if (noteIndex < stableShuffleIndex && stableShuffleIndex > 0) { // Changed <= to <
+                        stableShuffleIndex--; // Decrement stable shuffle index if removal is before it
+                    } else if (stableShuffleIndex >= stableShuffledOrder.length && stableShuffledOrder.length > 0) {
+                        stableShuffleIndex = stableShuffledOrder.length - 1; // Correct index if out of bounds
+                    } else if (stableShuffledOrder.length === 0) {
+                        stableShuffleIndex = 0; // Reset to 0 if list becomes empty
+                    }
+                }
+            }
         }
 
 
