@@ -230,6 +230,14 @@
             </div>
         </div><br>
 
+        <!-- --- INSERT SUB ARP SCALE HERE --- -->
+        <div class="slider-container">
+            <label for="subArpScale">Sub Arp Scale (%):</label>
+            <input type="range" id="subArpScale" value="0" min="0" max="100" step="1">
+            <span id="subArpScaleValue" class="number-display">0</span>
+        </div><br>
+        <!-- --- END INSERT SUB ARP SCALE --- -->
+
         <label for="arpSyncMode">Arp Sync Mode:</label>
         <select id="arpSyncMode">
             <option value="free">Free Sync</option>
@@ -356,6 +364,9 @@
         // --- New Walk Mode Parameters ---
         let walkSkew = 0;              // Skew parameter for walk modes, default 0
         let walkDistance = 0;          // Distance parameter for normal walk mode, default 0
+
+        // --- Sub Arp ---
+        let subArpScalePercentage = 0; // Default sub arp scale
 
 
         // --- MPE and MIDI Channel Settings ---
@@ -512,6 +523,11 @@
         document.getElementById('gateLength').addEventListener('input', function() {
             gateLengthPercentage = parseInt(this.value);
             gateLengthValueDisplay.textContent = gateLengthPercentage;
+        });
+        // --- NEW Event Listener for Sub Arp Scale ---
+        document.getElementById('subArpScale').addEventListener('input', function() {
+            subArpScalePercentage = parseInt(this.value);
+            document.getElementById('subArpScaleValue').textContent = subArpScalePercentage;
         });
 
 
@@ -1549,7 +1565,7 @@
 
 
         /** --- REFACTORED - Combines playNote and playChord ---
-         * Plays a single note or an array of notes.
+         * Plays a single note or an array of notes, with optional sub-arpeggiation for chords.
          * @param {number|number[]} notes - MIDI note number or array of MIDI note numbers to play.
          */
         function playNotes(notes) {
@@ -1557,12 +1573,28 @@
                 let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
                 const notesArray = Array.isArray(notes) ? notes : [notes]; // Ensure notes is always an array
 
-                notesArray.forEach(expandedNote => { // --- UPDATED - using expandedNote ---
-                    const originalNote = octaveExpandedNoteMap.get(expandedNote); // --- UPDATED - pressure lookup using map ---
-                    let pressure = notePressures.get(originalNote) || defaultNotePressure;
-                    let velocity = calculateVelocity(pressure);
-                    sendMidiNote(expandedNote, velocity, outputChannel); // Play EXPANDED note
-                });
+                if (notesArray.length > 1 && subArpScalePercentage > 0 && (arpMode === 'chord' || arpMode === 'chordN')) {
+                    // Sub-Arpeggiation Logic for Chords
+                    const subArpDuration = (clockDivisionDurationMs * subArpScalePercentage) / 100;
+                    const noteSpacing = subArpDuration / notesArray.length;
+                    notesArray.sort((a, b) => a - b).forEach((expandedNote, index) => { // Sort notes for bottom-to-top arpeggiation
+                        const originalNote = octaveExpandedNoteMap.get(expandedNote);
+                        let pressure = notePressures.get(originalNote) || defaultNotePressure;
+                        let velocity = calculateVelocity(pressure);
+                        const delay = noteSpacing * index;
+                        setTimeout(() => {
+                            sendMidiNote(expandedNote, velocity, outputChannel); // Play EXPANDED note
+                        }, delay);
+                    });
+                } else {
+                    // Play notes simultaneously (or single note)
+                    notesArray.forEach(expandedNote => {
+                        const originalNote = octaveExpandedNoteMap.get(expandedNote);
+                        let pressure = notePressures.get(originalNote) || defaultNotePressure;
+                        let velocity = calculateVelocity(pressure);
+                        sendMidiNote(expandedNote, velocity, outputChannel); // Play EXPANDED note
+                    });
+                }
             }
         }
 
@@ -1854,6 +1886,7 @@
         document.getElementById('walkSkewValue').textContent = walkSkew.toFixed(2); // Initialize Walk Skew display
         document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2); // Initialize Walk Distance display
         document.getElementById('gateLengthValue').textContent = gateLengthPercentage; // Initialize Gate Length display
+        document.getElementById('subArpScaleValue').textContent = subArpScalePercentage; // Initialize Sub Arp Scale display
 
 
     </script>
