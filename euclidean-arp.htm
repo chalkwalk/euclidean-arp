@@ -70,6 +70,14 @@
         <h3>Arpeggiator Settings</h3>
         <label for="clockDivision">Clock Division (ms):</label>
         <input type="number" id="clockDivision" value="250" min="10">
+        <label for="arpMode">Arp Mode:</label>
+        <select id="arpMode">
+            <option value="up">Up</option>
+            <option value="down">Down</option>
+            <option value="upDownInclusive">Up/Down (Incl.)</option>
+            <option value="upDownExclusive">Up/Down (Excl.)</option>
+            <option value="random">Random</option>
+        </select>
     </div>
 
     <div class="playback-display" id="playbackDisplay"></div>
@@ -91,9 +99,13 @@
         let currentPatternIndex = 0;
         const playbackDisplayElem = document.getElementById('playbackDisplay');
         const maxPlaybackSteps = 30; // Display steps, not notes now
+        let arpMode = 'up'; // Default arp mode
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
+        document.getElementById('arpMode').addEventListener('change', function() {
+            arpMode = this.value; // Update arpMode on dropdown change
+        });
 
         // UI Note Selection (same as before)
         const noteButtons = document.querySelectorAll('.note-button');
@@ -231,6 +243,42 @@
             });
         }
 
+        function getArpNote(notesToArp) {
+            switch (arpMode) {
+                case 'up':
+                    return notesToArp[currentArpNoteIndex % notesToArp.length];
+                case 'down':
+                    return notesToArp[notesToArp.length - 1 - (currentArpNoteIndex % notesToArp.length)];
+                case 'upDownInclusive':
+                    // TODO: Implement Up/Down Inclusive logic
+                    return notesToArp[currentArpNoteIndex % notesToArp.length]; // Placeholder
+                case 'upDownExclusive':
+                    // TODO: Implement Up/Down Exclusive logic
+                    return notesToArp[currentArpNoteIndex % notesToArp.length]; // Placeholder
+                case 'random':
+                    return notesToArp[Math.floor(Math.random() * notesToArp.length)];
+                default: // 'up' is default
+                    return notesToArp[currentArpNoteIndex % notesToArp.length];
+            }
+        }
+
+        function advanceArpRhythmIndex(steps = 1) {
+            currentArpRhythmIndex = (currentArpRhythmIndex + steps) % arpRhythm.length;
+        }
+
+        function resetArpRhythmIndex() {
+            currentArpRhythmIndex = 0;
+        }
+
+        function advancePatternIndex(steps = 1) {
+            currentPatternIndex = (currentPatternIndex + steps) % patternRhythm.length;
+        }
+
+        function resetPatternIndex() {
+            currentPatternIndex = 0;
+        }
+
+
         function startArpeggiator() {
             if (!midiOutput && heldNotes.length === 0 && uiHeldNotes.length === 0) {
                 alert("No MIDI output device found and no UI notes selected. Please connect MIDI or select UI notes.");
@@ -241,15 +289,17 @@
                 alert("Hold some notes or select UI notes to start the arpeggiator.");
                 return;
             }
+            // Sort notes for Up/Down modes to work predictably
+            notesToArp.sort((a, b) => a - b);
 
             arpRunning = true;
             document.getElementById('startButton').disabled = true;
             document.getElementById('stopButton').disabled = false;
             updateRhythmDisplays();
+            resetArpRhythmIndex(); // Reset indices on start
+            resetPatternIndex();
 
             currentArpNoteIndex = 0;
-            currentArpRhythmIndex = 0;
-            currentPatternIndex = 0;
             playbackDisplayElem.innerHTML = ''; // Clear playback display here on start!
 
             const clockDivision = parseInt(document.getElementById('clockDivision').value);
@@ -285,14 +335,14 @@
                 while (true) { // Loop until a 'Note' is found in pattern or pattern ends
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
                     if (currentPatternEvent === 'N') { // Note in Pattern
-                        const noteToPlay = notesToArp[currentArpNoteIndex % notesToArp.length];
+                        const noteToPlay = getArpNote(notesToArp); // Use getArpNote function
                         playNote(noteToPlay);
                         currentArpNoteIndex++;
-                        currentPatternIndex = (currentPatternIndex + 1) % patternRhythm.length;
+                        advancePatternIndex(); // Advance pattern index using method
                         stepType = 'note';
                         break; // Exit loop after playing note
                     } else if (currentPatternEvent === 'S') { // Skip in Pattern
-                        currentPatternIndex = (currentPatternIndex + 1) % patternRhythm.length;
+                        advancePatternIndex(); // Advance pattern index using method
                         currentArpNoteIndex++;
                         stepType = 'skip';
                         // Continue loop to check next pattern event with the same arp rhythm beat
@@ -305,8 +355,8 @@
                 stepType = 'rest';
             }
 
-            updatePlaybackDisplay(stepType, (stepType === 'note') ? notesToArp[currentArpNoteIndex % notesToArp.length] : null);
-            currentArpRhythmIndex = (currentArpRhythmIndex + 1) % arpRhythm.length; // Always advance arp rhythm index AFTER processing beat/rest
+            updatePlaybackDisplay(stepType, (stepType === 'note') ? getArpNote(notesToArp) : null);
+            advanceArpRhythmIndex(); // Advance arp rhythm index using method AFTER processing beat/rest
         }
 
         function playNote(note) {
