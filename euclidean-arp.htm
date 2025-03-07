@@ -67,7 +67,7 @@
     </div>
 
     <div class="parameter-group">
-        <h3>Arpeggiator Settings</h3>
+        <h3>Arpeggiator & MPE Settings</h3>
         <label for="clockDivision">Clock Division (ms):</label>
         <input type="number" id="clockDivision" value="250" min="10">
         <label for="arpMode">Arp Mode:</label>
@@ -77,6 +77,59 @@
             <option value="upDownInclusive">Up/Down (Incl.)</option>
             <option value="upDownExclusive">Up/Down (Excl.)</option>
             <option value="random">Random</option>
+        </select><br>
+
+        <input type="checkbox" id="enableMPE">
+        <label for="enableMPE">Enable MPE Input</label><br>
+
+        <label for="mpeGlobalInputChannel">MPE Global Input Channel:</label>
+        <select id="mpeGlobalInputChannel">
+            <option value="omni">Omni</option>
+            <option value="1">Channel 1</option>
+            <option value="2">Channel 2</option>
+            <option value="3">Channel 3</option>
+            <option value="4">Channel 4</option>
+            <option value="5">Channel 5</option>
+            <option value="6">Channel 6</option>
+            <option value="7">Channel 7</option>
+            <option value="8">Channel 8</option>
+            <option value="9">Channel 9</option>
+            <option value="10">Channel 10</option>
+            <option value="11">Channel 11</option>
+            <option value="12">Channel 12</option>
+            <option value="13">Channel 13</option>
+            <option value="14">Channel 14</option>
+            <option value="15">Channel 15</option>
+            <option value="16">Channel 16</option>
+        </select><br>
+
+        <label for="mpeInputVoiceChannels">MPE Input Voice Channels:</label>
+        <input type="number" id="mpeInputVoiceChannels" value="8" min="1" max="15"><br>
+
+        <label for="mpeOutputMode">MPE Output Mode:</label>
+        <select id="mpeOutputMode">
+            <option value="non-mpe">Non-MPE (Single Channel)</option>
+            <option value="mpe">MPE</option>
+        </select><br>
+
+        <label for="mpeGlobalOutputChannel">MPE Global Output Channel / Base Channel:</label>
+        <select id="mpeGlobalOutputChannel">
+            <option value="1">Channel 1</option>
+            <option value="2">Channel 2</option>
+            <option value="3">Channel 3</option>
+            <option value="4">Channel 4</option>
+            <option value="5">Channel 5</option>
+            <option value="6">Channel 6</option>
+            <option value="7">Channel 7</option>
+            <option value="8">Channel 8</option>
+            <option value="9">Channel 9</option>
+            <option value="10">Channel 10</option>
+            <option value="11">Channel 11</option>
+            <option value="12">Channel 12</option>
+            <option value="13">Channel 13</option>
+            <option value="14">Channel 14</option>
+            <option value="15">Channel 15</option>
+            <option value="16">Channel 16</option>
         </select>
     </div>
 
@@ -100,12 +153,33 @@
         const playbackDisplayElem = document.getElementById('playbackDisplay');
         const maxPlaybackSteps = 30; // Display steps, not notes now
         let arpMode = 'up'; // Default arp mode
+        let isMPEEnabled = false; // MPE Enable Flag
+        let mpeGlobalInputChannel = 'omni'; // MPE Global Input Channel Selection
+        let mpeInputVoiceChannels = 8; // Number of MPE Input Voice Channels
+        let mpeOutputMode = 'non-mpe'; // MPE Output Mode
+        let mpeGlobalOutputChannel = '1'; // MPE Global Output Channel / Base Channel
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
         document.getElementById('arpMode').addEventListener('change', function() {
-            arpMode = this.value; // Update arpMode on dropdown change
+            arpMode = this.value;
         });
+        document.getElementById('enableMPE').addEventListener('change', function() {
+            isMPEEnabled = this.checked;
+        });
+        document.getElementById('mpeGlobalInputChannel').addEventListener('change', function() {
+            mpeGlobalInputChannel = this.value;
+        });
+        document.getElementById('mpeInputVoiceChannels').addEventListener('change', function() {
+            mpeInputVoiceChannels = parseInt(this.value);
+        });
+        document.getElementById('mpeOutputMode').addEventListener('change', function() {
+            mpeOutputMode = this.value;
+        });
+        document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() {
+            mpeGlobalOutputChannel = this.value;
+        });
+
 
         // UI Note Selection (same as before)
         const noteButtons = document.querySelectorAll('.note-button');
@@ -158,17 +232,40 @@
 
         function onMIDIMessage(message) {
             const command = message.data[0];
+            const channel = command & 0x0F; // Extract MIDI channel (lower 4 bits)
             const note = message.data[1];
             const velocity = (message.data.length > 2) ? message.data[2] : 0;
 
-            if (command >= 144 && command < 160) { // Note On
-                if (velocity > 0) {
-                    noteOn(note);
+            let processMessage = false;
+
+            if (isMPEEnabled) {
+                if (mpeGlobalInputChannel === 'omni') {
+                    processMessage = true; // Process all channels in Omni mode (for now, refine MPE channel range later if needed)
                 } else {
+                    const globalChannel = parseInt(mpeGlobalInputChannel);
+                    const voiceChannelCount = mpeInputVoiceChannels;
+                    if (channel + 1 >= globalChannel + 1 && channel + 1 <= globalChannel + voiceChannelCount) { // Check if channel is within MPE voice channel range
+                        processMessage = true;
+                    } else if (channel + 1 === globalChannel) { // Optionally process global channel messages too, if needed, for now ignoring.
+                        // processMessage = true;
+                    }
+                }
+            } else {
+                processMessage = true; // Process all messages if MPE is disabled (or refine to channel 1 later if needed)
+            }
+
+
+            if (processMessage) {
+                if (command >= 144 && command < 160) { // Note On
+                    if (velocity > 0) {
+                        noteOn(note);
+                    } else {
+                        noteOff(note);
+                    }
+                } else if (command >= 128 && command < 144 || (command >= 144 && command < 160 && velocity === 0)) { // Note Off
                     noteOff(note);
                 }
-            } else if (command >= 128 && command < 144 || (command >= 144 && command < 160 && velocity === 0)) { // Note Off
-                noteOff(note);
+                // In future, handle MPE specific messages (pitch bend, CC74, pressure) here if needed based on isMPEEnabled and selected channel
             }
         }
 
@@ -361,15 +458,22 @@
 
         function playNote(note) {
             if (midiOutput) {
-                midiOutput.send([0x90, note, 100]); // Note On
-                setTimeout(() => { midiOutput.send([0x80, note, 0]); }, 50); // Note Off
+                let outputChannel = parseInt(mpeGlobalOutputChannel) -1; // Channel is 0 indexed for MIDI
+                if (mpeOutputMode === 'mpe') {
+                    midiOutput.send([0xE0 + outputChannel, 0, 0x40, note, 100]); // Pitch Bend to center, Note On, channel from mpeGlobalOutputChannel (for now just base channel)
+                    setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, 50); // Note Off
+                } else {
+                    midiOutput.send([0x90 + outputChannel, note, 100]); // Note On, channel from mpeGlobalOutputChannel (for non-MPE)
+                    setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, 50); // Note Off
+                }
             }
         }
 
         function allNotesOff() {
             if (midiOutput) {
+                let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
                 for (const note of heldNotes) {
-                    midiOutput.send([0x80, note, 0]); // Note Off for all held notes
+                    midiOutput.send([0x80 + outputChannel, note, 0]); // Note Off for all held notes on selected output channel
                 }
             }
         }
