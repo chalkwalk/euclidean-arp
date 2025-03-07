@@ -112,8 +112,31 @@
 
     <div class="parameter-group">
         <h3>Arpeggiator & MPE Settings</h3>
-        <label for="clockDivision">Clock Division (ms):</label>
-        <input type="number" id="clockDivision" value="250" min="10">
+
+        <label for="tempoSource">Tempo Source:</label>
+        <select id="tempoSource">
+            <option value="internal">Internal</option>
+            <option value="external">External MIDI Clock</option>
+        </select><br>
+
+        <label for="tempoBPM">Tempo (BPM):</label>
+        <input type="number" id="tempoBPM" value="120" min="10" max="300"><br>
+
+        <label for="clockDivision">Clock Division:</label>
+        <select id="clockDivision">
+            <option value="1/1">1/1</option>
+            <option value="1/2">1/2</option>
+            <option value="1/4" selected="selected">1/4</option>
+            <option value="1/8">1/8</option>
+            <option value="1/16">1/16</option>
+            <option value="1/32">1/32</option>
+            <option value="1/2T">1/2T</option>
+            <option value="1/4T">1/4T</option>
+            <option value="1/8T">1/8T</option>
+            <option value="1/16T">1/16T</option>
+            <option value="1/32T">1/32T</option>
+        </select><br>
+
         <label for="arpMode">Arp Mode:</label>
         <select id="arpMode">
             <option value="up">Up</option>
@@ -197,35 +220,44 @@
     <script>
         let midiAccess;
         let midiOutput;
-        let midiInput; // Variable to store selected MIDI input
-        let heldNotes = []; // Notes from MIDI input and UI buttons
-        let heldNotesUI = new Set(); // Track notes held by UI interaction
-        let heldNotesMIDI = new Set(); // Track notes held by MIDI input
+        let midiInput;
+        let heldNotes = [];
+        let heldNotesUI = new Set();
+        let heldNotesMIDI = new Set();
         let patternRhythm = [];
         let arpRhythm = [];
         let arpRunning = false;
-        let arpInterval;
+        let arpInterval; // Will be used for internal clock interval
         let currentArpNoteIndex = 0;
         let currentArpRhythmIndex = 0;
         let currentPatternIndex = 0;
         const playbackDisplayElem = document.getElementById('playbackDisplay');
-        const maxPlaybackSteps = 30; // Display steps, not notes now
-        let arpMode = 'up'; // Default arp mode
-        let isMPEEnabled = false; // MPE Enable Flag
-        let mpeGlobalInputChannel = 'omni'; // MPE Global Input Channel Selection
-        let mpeInputVoiceChannels = 8; // Number of MPE Input Voice Channels
-        let mpeOutputMode = 'non-mpe'; // MPE Output Mode
-        let mpeGlobalOutputChannel = '1'; // MPE Global Output Channel / Base Channel
-        let arpSyncMode = 'free'; // Default sync mode is Free Sync
+        const maxPlaybackSteps = 30;
+        let arpMode = 'up';
+        let isMPEEnabled = false;
+        let mpeGlobalInputChannel = 'omni';
+        let mpeInputVoiceChannels = 8;
+        let mpeOutputMode = 'non-mpe';
+        let mpeGlobalOutputChannel = '1';
+        let arpSyncMode = 'free';
+
+        // Tempo and Clock variables
+        let tempoSource = 'internal'; // Default to internal tempo
+        let bpm = 120; // Default BPM
+        let clockDivision = '1/4'; // Default clock division
+        let tickCounter = 0; // Counter for ticks
+        let clockDivisionCounterMax = 24; // Default to 1/4 note (24 ticks per step at 24ppqn) - now correctly initialized for 1/4
+        let internalClockInterval; // Variable to hold the setInterval ID for internal clock
 
         // State variables for different arp modes
-        let upDownDirection = 1; // 1 for up, -1 for down, for upDown modes
-        let convergeDivergeDirection = 1 // 1 for converge, -1 for diverge
+        let upDownDirection = 1;
+        let convergeDivergeDirection = 1
         let shuffledNotesOrder = [];
         let stableShuffledOrder = [];
         let stableShuffleIndex = 0;
-        let lastNotesToArp = []; // To detect if notes have changed for stable shuffle
-        let convergeDivergeStep = 0; // Track step in converge/diverge cycles
+        let lastNotesToArp = [];
+        let convergeDivergeStep = 0;
+
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
@@ -249,6 +281,31 @@
         });
         document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() {
             mpeGlobalOutputChannel = this.value;
+        });
+
+        // New Event listeners for tempo controls
+        document.getElementById('tempoSource').addEventListener('change', function() {
+            tempoSource = this.value;
+            if (tempoSource === 'internal') {
+                setupInternalClock(); // Initialize internal clock if switching to internal
+            } else {
+                clearInterval(internalClockInterval); // Stop internal clock if switching to external
+            }
+        });
+
+        document.getElementById('tempoBPM').addEventListener('change', function() {
+            bpm = parseInt(this.value);
+            if (tempoSource === 'internal') {
+                setupInternalClock(); // Re-setup internal clock with new BPM
+            }
+        });
+
+        document.getElementById('clockDivision').addEventListener('change', function() {
+            clockDivision = this.value;
+            clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision); // Update clock division counter
+            if (tempoSource === 'internal') {
+                setupInternalClock(); // Re-setup internal clock as interval might need adjustment
+            }
         });
 
 
@@ -329,6 +386,13 @@
             const channel = command & 0x0F; // Extract MIDI channel (lower 4 bits)
             const note = message.data[1];
             const velocity = (message.data.length > 2) ? message.data[2] : 0;
+
+            // MIDI Clock Tick - 0xF8 (248 in decimal)
+            if (command === 248) {
+                handleMIDITick();
+                return; // Important: Exit to prevent tick from being processed as note message
+            }
+
 
             let processMessage = false;
 
@@ -443,7 +507,7 @@
                     rhythm[i] = beatEvent;
                     count++;
                 }
-            }
+                }
             for (let i = 0; i < offset; i++) {
                 rhythm.unshift(rhythm.pop());
             }
@@ -515,7 +579,7 @@
                     let conNote;
                     let conAbsoluteIndex = Math.floor(convergeStep / 2);
                     if (convergeStep % 2 === 0) {
-                    	conNote = notesToArp[conAbsoluteIndex];
+                        conNote = notesToArp[conAbsoluteIndex];
                     } else {
                         conNote = notesToArp.at(-1-conAbsoluteIndex);
                     }
@@ -525,7 +589,7 @@
                     let divNote;
                     let divAbsoluteIndex = Math.floor((notesToArp.length - 1 - divergeStep) / 2);
                     if (divergeStep % 2 === 0) {
-                    	divNote = notesToArp[divAbsoluteIndex];
+                        divNote = notesToArp[divAbsoluteIndex];
                     } else {
                         divNote = notesToArp.at(-1-divAbsoluteIndex);
                     }
@@ -536,7 +600,6 @@
                     return notesToArp[Math.floor(Math.random() * notesToArp.length)];
                 case 'shuffled':
                     // Reshuffle every time we loop around notesToArp
-                    console.log("currentArpNoteIndex:", currentArpNoteIndex)
                     if (currentArpNoteIndex % notesToArp.length === 0) {
                         shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                     }
@@ -565,62 +628,138 @@
         }
 
 
+        function calculateClockDivisionCounterMax(division) {
+            switch (division) {
+                case '1/1': return 96;  // 1 bar = 4 quarter notes = 96 ticks
+                case '1/2': return 48;  // 1/2 note = 2 quarter notes = 48 ticks
+                case '1/4': return 24;  // 1/4 note = 1 quarter note = 24 ticks
+                case '1/8': return 12;  // 1/8 note = 12 ticks
+                case '1/16': return 6;  // 1/16 note = 6 ticks
+                case '1/32': return 3;  // 1/32 note = 3 ticks
+                case '1/2T': return 32; // 1/2 triplet = (2/3) * 48 = 32 ticks
+                case '1/4T': return 16; // 1/4 triplet = (2/3) * 24 = 16 ticks
+                case '1/8T': return 8;  // 1/8 triplet = (2/3) * 12 = 8 ticks
+                case '1/16T': return 4; // 1/16 triplet = (2/3) * 6 = 4 ticks
+                case '1/32T': return 2; // 1/32 triplet = (2/3) * 3 = 2 ticks
+                default: return 24; // Default to 1/4
+            }
+        }
+
+        function setupInternalClock() {
+            clearInterval(internalClockInterval); // Clear any existing interval
+            const intervalMs = 60000 / (bpm * 24); // Milliseconds per tick
+            internalClockInterval = setInterval(tick, intervalMs);
+            clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
+            tickCounter = 0; // Reset tick counter on setup/tempo change
+            console.log(`Internal clock setup: BPM=${bpm}, Division=${clockDivision}, Interval=${intervalMs.toFixed(2)}ms, Ticks per step=${clockDivisionCounterMax}`);
+        }
+
+
         function startArpeggiator() {
-            // if (!midiOutput && heldNotes.length === 0) {
-            //    alert("No MIDI output device found and no notes selected. Please connect MIDI or select UI notes.");
-            //    return;
-            // }
-            let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use heldNotes directly, which now includes UI notes
+            let notesToArp = heldNotes.length > 0 ? heldNotes : [];
 
-            // For Key Sync, arpeggiator might start in noteOn, so this check might be redundant in some cases, but keep it for 'Free Sync' and button start.
-            // if (arpSyncMode !== 'key') {
-            //    if (notesToArp.length === 0) {
-            //        alert("Hold some notes or select UI notes to start the arpeggiator.");
-            //        return;
-            //    }
-            //}
-            if (arpRunning) return; // Prevent restart if already running
+            if (arpRunning) return;
 
-            // Sort notes for Up/Down, Converge/Diverge modes to work predictably
             notesToArp.sort((a, b) => a - b);
 
-            // Check if notes have changed for stable shuffle reset
             if (!arraysAreEqual(notesToArp, lastNotesToArp)) {
                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-                lastNotesToArp = [...notesToArp]; // Update last notes
-                stableShuffleIndex = 0; // Reset stable shuffle index when notes change on start too.
+                lastNotesToArp = [...notesToArp];
+                stableShuffleIndex = 0;
             }
 
-            // Initialize mode specific variables on start
             upDownDirection = 1;
             convergeDivergeDirection = 1;
-
-            // Shuffle notes for shuffled mode on start (and every restart)
             shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-
 
             arpRunning = true;
             document.getElementById('startButton').disabled = true;
             document.getElementById('stopButton').disabled = false;
             updateRhythmDisplays();
-            resetArpRhythmIndex(); // Reset indices on start
+            resetArpRhythmIndex();
             resetPatternIndex();
-
             currentArpNoteIndex = 0;
-            playbackDisplayElem.innerHTML = ''; // Clear playback display here on start!
+            playbackDisplayElem.innerHTML = '';
 
-            const clockDivision = parseInt(document.getElementById('clockDivision').value);
-            arpInterval = setInterval(arpStep, clockDivision);
+            if (tempoSource === 'internal') {
+                setupInternalClock(); // Setup internal clock if not already running or tempo changed
+            } else {
+                clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision); // Still need to update this for external sync
+                tickCounter = 0; // Reset counter for external sync too
+                console.log(`External clock mode active, division=${clockDivision}, ticksPerStep=${clockDivisionCounterMax}`);
+                // External clock will drive the 'tick' function via MIDI ticks
+            }
         }
 
         function stopArpeggiator() {
-            if (!arpRunning) return; // Prevent double stop
+            if (!arpRunning) return;
             arpRunning = false;
-            clearInterval(arpInterval);
+            if (tempoSource === 'internal') {
+                clearInterval(internalClockInterval); // Clear internal interval only in internal mode
+            }
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
             allNotesOff();
             // playbackDisplayElem.innerHTML = ''; // No need to clear here anymore
+        }
+
+        function tick() {
+            tickCounter++;
+            if (tickCounter >= clockDivisionCounterMax) {
+                arpStep();
+                tickCounter = 0; // Reset counter after step
+            }
+        }
+
+
+        function handleMIDITick() {
+            if (tempoSource === 'external') {
+                tick();
+            }
+        }
+
+        function onMIDIMessage(message) {
+            const command = message.data[0];
+            const channel = command & 0x0F;
+            const note = message.data[1];
+            const velocity = (message.data.length > 2) ? message.data[2] : 0;
+
+            // MIDI Clock Tick - 0xF8 (248 in decimal)
+            if (command === 248) {
+                handleMIDITick();
+                return; // Important: Exit to prevent tick from being processed as note message
+            }
+
+            let processMessage = false;
+
+            if (isMPEEnabled) {
+                if (mpeGlobalInputChannel === 'omni') {
+                    processMessage = true; // Process all channels in Omni mode (for now, refine MPE channel range later if needed)
+                } else {
+                    const globalChannel = parseInt(mpeGlobalInputChannel);
+                    const voiceChannelCount = mpeInputVoiceChannels;
+                    if (channel + 1 >= globalChannel + 1 && channel + 1 <= globalChannel + voiceChannelCount) { // Check if channel is within MPE voice channel range
+                        processMessage = true;
+                    } else if (channel + 1 === globalChannel) { // Optionally process global channel messages too, if needed, for now ignoring.
+                        // processMessage = true;
+                    }
+                }
+            } else {
+                processMessage = true; // Process all messages if MPE is disabled (or refine to channel 1 later if needed)
+            }
+
+
+            if (processMessage) {
+                if (command >= 144 && command < 160) {
+                    if (velocity > 0) {
+                        noteOn(note, 'midi');
+                    } else {
+                        noteOff(note, 'midi');
+                    }
+                } else if (command >= 128 && command < 144 || (command >= 144 && command < 160 && velocity === 0)) {
+                    noteOff(note, 'midi');
+                }
+            }
         }
 
         function arpStep() {
