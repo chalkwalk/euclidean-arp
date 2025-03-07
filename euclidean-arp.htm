@@ -83,6 +83,11 @@
         #walkParams {
             display: none; /* Initially hidden */
         }
+        #tempoDisplay {
+            display: inline-block;
+            margin-left: 10px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -167,7 +172,7 @@
         </select><br>
 
         <label for="tempoBPM">Tempo (BPM):</label>
-        <input type="number" id="tempoBPM" value="120" min="10" max="300"><br>
+        <input type="number" id="tempoBPM" value="120" min="10" max="300"> <span id="tempoDisplay">120 BPM (Internal)</span><br>
 
         <label for="clockDivision">Clock Division:</label>
         <select id="clockDivision">
@@ -300,6 +305,11 @@
             <input type="range" id="maxVelocity" value="127" min="1" max="127" step="1">
             <span id="maxVelocityValue" class="number-display">127</span>
         </div>
+        <div class="slider-container">
+            <label for="gateLength">Gate Length (%):</label>
+            <input type="range" id="gateLength" value="50" min="1" max="150" step="1">
+            <span id="gateLengthValue" class="number-display">50</span>
+        </div>
     </div>
 
     <div class="playback-display" id="playbackDisplay"></div>
@@ -367,6 +377,14 @@
         let tickCounter = -1;
         let clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision); // Ticks per step based on clock division
         let internalClockInterval = null;
+        let clockDivisionDurationMs = 0; // NEW: Duration of one clock division in milliseconds
+        let tempoDisplayElem = document.getElementById('tempoDisplay'); // NEW: Tempo display element
+
+        // --- MIDI Clock Tick History ---
+        const tickHistorySize = 24; // Store up to 24 ticks (one quarter note)
+        let tickHistory = new Array(tickHistorySize).fill(0);
+        let tickIndex = 0;
+        let lastTickTime = 0;
 
         // --- Arpeggio Mode Specific State ---
         let shuffledNotesOrder = [];        // Stores shuffled order of notes for 'shuffled' mode
@@ -383,6 +401,11 @@
         let octaveCount = 1;
         let baseVelocityValue = 96; // Default base velocity
         let maxVelocityValue = 127; // Default max velocity
+
+        // --- Gate Length ---
+        let gateLengthPercentage = 50; // Default gate length percentage
+        let gateLengthValueDisplay = document.getElementById('gateLengthValue'); // Get display element
+
 
         // -- Miscellaneous constants --
         const defaultNotePressure = 0; // Pressure that new notes get initialized to
@@ -436,14 +459,17 @@
             tempoSource = this.value;
             if (tempoSource === 'internal') {
                 setupInternalClock();
+                updateTempoDisplay(); // Update display immediately when switching to internal
             } else {
                 clearInterval(internalClockInterval);
+                updateTempoDisplay('External MIDI Clock'); // Update display immediately when switching to external
             }
         });
         document.getElementById('tempoBPM').addEventListener('change', function() {
             bpm = parseInt(this.value);
             if (tempoSource === 'internal') {
                 setupInternalClock();
+                updateTempoDisplay(); // Update display immediately when BPM changes
             }
         });
         document.getElementById('clockDivision').addEventListener('change', function() {
@@ -482,6 +508,24 @@
             walkDistance = parseFloat(this.value);
             document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2);
         });
+        // --- NEW Event Listener for Gate Length ---
+        document.getElementById('gateLength').addEventListener('input', function() {
+            gateLengthPercentage = parseInt(this.value);
+            gateLengthValueDisplay.textContent = gateLengthPercentage;
+        });
+
+
+        /**
+          * Updates the tempo display in the UI.
+          * @param {string} source - Tempo source ('Internal' or 'External MIDI Clock').
+          *                          Defaults to 'Internal' if tempoSource is 'internal', otherwise 'External MIDI Clock'.
+          */
+        function updateTempoDisplay(source) {
+            if (!source) {
+                source = tempoSource === 'internal' ? 'Internal' : 'External MIDI Clock';
+            }
+            tempoDisplayElem.textContent = `${bpm} BPM (${source})`;
+        }
 
 
         /**
@@ -1143,7 +1187,9 @@
             internalClockInterval = setInterval(tick, intervalMs);
             clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
             tickCounter = -1;
-            console.log(`Internal clock setup: BPM=${bpm}, Division=${clockDivision}, Interval=${intervalMs.toFixed(2)}ms, Ticks per step=${clockDivisionCounterMax}`);
+            clockDivisionDurationMs = intervalMs * clockDivisionCounterMax; // Calculate duration of one clock division
+             updateTempoDisplay(); // Update tempo display to reflect internal BPM
+            console.log(`Internal clock setup: BPM=${bpm}, Division=${clockDivision}, Interval=${intervalMs.toFixed(2)}ms, Ticks per step=${clockDivisionCounterMax}, Clock Division Duration=${clockDivisionDurationMs.toFixed(2)}ms`);
         }
 
 
@@ -1186,6 +1232,7 @@
             } else {
                 clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
                 tickCounter = -1;
+                updateTempoDisplay('External MIDI Clock'); // Indicate external clock is active
                 console.log(`External clock mode active, division=${clockDivision}, ticksPerStep=${clockDivisionCounterMax}`);
             }
         }
@@ -1220,7 +1267,29 @@
         /** Handles MIDI clock tick messages (0xF8). */
         function handleMIDITick() {
             if (tempoSource === 'external') {
-                tick();
+                const now = performance.now();
+                tickHistory[tickIndex % tickHistorySize] = now; // Store current tick time
+                tickIndex++;
+
+                if (tickIndex >= tickHistorySize) {
+                    // Calculate average tick interval over the last 'tickHistorySize' ticks
+                    let intervalSum = 0;
+                    for (let i = 1; i < tickHistorySize; i++) {
+                        intervalSum += tickHistory[i] - tickHistory[i - 1];
+                    }
+                    const averageInterval = intervalSum / (tickHistorySize - 1);
+                    if (averageInterval > 0) {
+                        clockDivisionDurationMs = averageInterval * clockDivisionCounterMax;
+                        bpm = Math.round(60000 / (averageInterval * 24)); // Recalculate BPM
+                        updateTempoDisplay(); // Update tempo display with external BPM
+                    }
+                } else if (tickIndex > 1) {
+                     clockDivisionDurationMs = (now - lastTickTime) * clockDivisionCounterMax;
+                     bpm = Math.round(60000 / ((now - lastTickTime) * 24)); // Recalculate BPM
+                     updateTempoDisplay(); // Update tempo display with external BPM
+                }
+                 lastTickTime = now;
+                tick(); // Proceed with arpeggiator step
             }
         }
 
@@ -1467,12 +1536,13 @@
          */
         function sendMidiNote(note, velocity, outputChannel) {
             if (midiOutput) {
+                const gateDurationMs = (clockDivisionDurationMs * gateLengthPercentage) / 100; // Calculate gate length in ms
                 if (mpeOutputMode === 'mpe') {
                     midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, velocity]); // Pitch Bend, Note On with velocity
-                    setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, 50); // Note Off
+                    setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, gateDurationMs); // Note Off with calculated delay
                 } else {
                     midiOutput.send([0x90 + outputChannel, note, velocity]); // Note On with velocity
-                    setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, 50); // Note Off
+                    setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, gateDurationMs); // Note Off with calculated delay
                 }
             }
         }
@@ -1783,6 +1853,7 @@
         document.getElementById('maxVelocityValue').textContent = maxVelocityValue; // Initialize Max Velocity display
         document.getElementById('walkSkewValue').textContent = walkSkew.toFixed(2); // Initialize Walk Skew display
         document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2); // Initialize Walk Distance display
+        document.getElementById('gateLengthValue').textContent = gateLengthPercentage; // Initialize Gate Length display
 
 
     </script>
