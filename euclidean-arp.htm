@@ -64,7 +64,7 @@
             text-align: right; /* Right-align label text */
         }
         .slider-container input[type="range"] {
-            width: 150px; /* Adjust slider width as needed */
+            width: 300px; /* Adjust slider width as needed */
         }
         .number-display {
             width: 30px; /* Fixed width for number display */
@@ -628,6 +628,10 @@
             const arpRhythmOffsetMax = Math.ceil(arpRhythmSteps / 2);
             arpRhythmOffsetSlider.min = -arpRhythmOffsetMax;
             arpRhythmOffsetSlider.max = arpRhythmOffsetMax;
+
+            // Reset indices when rhythms are updated
+            resetArpRhythmIndex();
+            resetPatternIndex();
         }
 
         function displayRhythm(rhythmArray, displayElementId) {
@@ -768,7 +772,7 @@
         }
 
         function resetArpRhythmIndex() {
-            currentArpRhythmIndex = 0;
+            currentArpRhythmIndex = currentArpRhythmIndex % arpRhythm.length;
         }
 
         function advancePatternIndex(steps = 1) {
@@ -776,7 +780,7 @@
         }
 
         function resetPatternIndex() {
-            currentPatternIndex = 0;
+            currentPatternIndex = currentPatternIndex % patternRhythm.length;
         }
 
 
