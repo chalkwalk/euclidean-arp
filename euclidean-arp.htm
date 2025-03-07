@@ -287,6 +287,13 @@
             if (!heldNotes.includes(note)) {
                 heldNotes.push(note);
                 updateHeldNotesDisplay();
+                // For stable shuffle, re-shuffle on note change
+                if (arpMode === 'stableShuffled' && arpRunning) {
+                    let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                    stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+                    stableShuffleIndex = 0; // Reset index as notes changed
+                    lastNotesToArp = [...notesToArp]; // Update last notes
+                }
             }
         }
 
@@ -295,6 +302,13 @@
             if (index > -1) {
                 heldNotes.splice(index, 1);
                 updateHeldNotesDisplay();
+                 // For stable shuffle, re-shuffle on note change
+                if (arpMode === 'stableShuffled' && arpRunning) {
+                    let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                    stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+                    stableShuffleIndex = 0; // Reset index as notes changed
+                    lastNotesToArp = [...notesToArp]; // Update last notes
+                }
             }
         }
 
@@ -370,14 +384,21 @@
                     } else {
                         return notesToArp[notesToArp.length - 2 - (upDownIndex - notesToArp.length)];
                     }
-                case 'upDownInclusive':
-                    const upDownInclusiveLength = 2 * notesToArp.length - 1; // Corrected length for inclusive up/down
-                    const upDownInclusiveIndex = currentArpNoteIndex % upDownInclusiveLength;
-                    if (upDownInclusiveIndex < notesToArp.length) {
-                        return notesToArp[upDownInclusiveIndex];
+                case 'upDownInclusive': // Corrected upDownInclusive mode
+                    const noteCount = notesToArp.length;
+                    if (noteCount === 0) return null;
+                    const cycleLength = 2 * noteCount - 2; // Length excluding repeats, for indexing
+                    const fullCycleLength = 2 * noteCount; // Length including repeats, for modulo
+                    let index;
+
+                    const currentCycleIndex = currentArpNoteIndex % fullCycleLength;
+
+                    if (currentCycleIndex < noteCount) {
+                        index = currentCycleIndex; // Upward motion
                     } else {
-                        return notesToArp[upDownInclusiveLength - 1 - upDownInclusiveIndex]; // Corrected index for inclusive up/down
+                        index = noteCount - 1 - (currentCycleIndex - noteCount); // Downward motion, reversed index
                     }
+                    return notesToArp[index];
                 case 'converge':
                     let convergeStep = currentArpNoteIndex % notesToArp.length;
                     let conNote;
@@ -403,9 +424,14 @@
                 case 'random':
                     return notesToArp[Math.floor(Math.random() * notesToArp.length)];
                 case 'shuffled':
+                    // Reshuffle every time we loop around notesToArp
+                    console.log("currentArpNoteIndex:", currentArpNoteIndex)
+                    if (currentArpNoteIndex % notesToArp.length === 0) {
+                        shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+                    }
                     return shuffledNotesOrder[currentArpNoteIndex % shuffledNotesOrder.length];
                 case 'stableShuffled':
-                    return stableShuffledOrder[stableShuffledIndex % stableShuffledOrder.length];
+                    return stableShuffledOrder[stableShuffleIndex % stableShuffledOrder.length];
                 default: // 'up' is default
                     return notesToArp[currentArpNoteIndex % notesToArp.length];
             }
@@ -445,6 +471,7 @@
             if (!arraysAreEqual(notesToArp, lastNotesToArp)) {
                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                 lastNotesToArp = [...notesToArp]; // Update last notes
+                stableShuffleIndex = 0; // Reset stable shuffle index when notes change on start too.
             }
 
             // Initialize mode specific variables on start
@@ -453,7 +480,7 @@
 
             // Shuffle notes for shuffled mode on start (and every restart)
             shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-            stableShuffledIndex = 0;
+
 
             arpRunning = true;
             document.getElementById('startButton').disabled = true;
@@ -479,56 +506,64 @@
         }
 
         function arpStep() {
-            if (!arpRunning) {
-                stopArpeggiator();
-                return;
-            }
-
-            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
-            if (notesToArp.length === 0) {
-                stopArpeggiator();
-                return;
-            }
-
-            let stepType = ''; // To store step type for visualization
-
-            const currentArpRhythmEvent = arpRhythm[currentArpRhythmIndex];
-
-            if (currentArpRhythmEvent === 'B') { // Beat in Arp Rhythm
-                let patternEventProcessed = false; // Flag to ensure pattern advances only once per arp rhythm beat
-                while (!patternEventProcessed) { // Loop until a pattern event is processed or pattern rhythm index changes
-                    const currentPatternEvent = patternRhythm[currentPatternIndex];
-                    if (currentPatternEvent === 'N') { // Note in Pattern
-                        const noteToPlay = getArpNote(notesToArp); // Use getArpNote function
-                        if (noteToPlay !== null) { // Check for null note (empty notesToArp)
-                            playNote(noteToPlay);
-                        }
-                        currentArpNoteIndex++;
-                        if (arpMode === 'stableShuffled') stableShuffledIndex++; // Advance stable shuffle index
-                        advancePatternIndex(); // Advance pattern index using method
-                        stepType = 'note';
-                        patternEventProcessed = true; // Pattern event processed, exit loop
-                    } else if (currentPatternEvent === 'S') { // Skip in Pattern
-                        advancePatternIndex(); // Advance pattern index using method
-                        currentArpNoteIndex++;
-                        if (arpMode === 'stableShuffled') stableShuffledIndex++; // Advance stable shuffle index
-                        stepType = 'skip';
-                        patternEventProcessed = true; // Pattern event processed, exit loop
-                        // Continue loop to check next pattern event with the same arp rhythm beat - No, Skip should just skip and move on.
-                    } else { // Should not happen ideally, but as a safety, break loop if pattern event is unexpected
-                        stepType = 'error'; // Indicate an error if needed
-                        patternEventProcessed = true; // Exit loop in case of error
-                        break;
-                    }
-                    if (patternEventProcessed) break; // Ensure loop exits after processing a pattern event
-                }
-            } else if (currentArpRhythmEvent === 'R') { // Rest in Arp Rhythm
-                stepType = 'rest';
-            }
-
-            updatePlaybackDisplay(stepType, (stepType === 'note') ? getArpNote(notesToArp) : null);
-            advanceArpRhythmIndex(); // Advance arp rhythm index using method AFTER processing beat/rest
-        }
+		    if (!arpRunning) {
+		        stopArpeggiator();
+		        return;
+		    }
+		
+		    let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+		     // For stable shuffle, re-shuffle if notes changed during arpeggiation
+		    if (arpMode === 'stableShuffled' && !arraysAreEqual(notesToArp, lastNotesToArp)) {
+		        stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+		        stableShuffleIndex = 0; // Reset index as notes changed
+		        lastNotesToArp = [...notesToArp]; // Update last notes. Important to do this *after* shuffle.
+		    }
+		    if (notesToArp.length === 0) {
+		        stopArpeggiator();
+		        return;
+		    }
+		
+		    let noteForStep = '';
+		
+		    let stepType = ''; // To store step type for visualization
+		
+		    const currentArpRhythmEvent = arpRhythm[currentArpRhythmIndex];
+		
+		    if (currentArpRhythmEvent === 'B') { // Beat in Arp Rhythm
+		        let patternEventProcessed = false; // Flag to ensure pattern advances only once per arp rhythm beat
+		        while (!patternEventProcessed) { // Loop until a pattern event is processed or pattern rhythm index changes
+		            const currentPatternEvent = patternRhythm[currentPatternIndex];
+		            if (currentPatternEvent === 'N') { // Note in Pattern
+		                noteForStep = getArpNote(notesToArp); // Call getArpNote *once* and store in noteForStep
+		                if (noteForStep !== null) {
+		                    playNote(noteForStep);
+		                }
+		                currentArpNoteIndex++;
+		                if (arpMode === 'stableShuffled') stableShuffleIndex++; // Advance stable shuffle index
+		                advancePatternIndex(); // Advance pattern index using method
+		                stepType = 'note';
+		                patternEventProcessed = true; // Pattern event processed, exit loop
+		            } else if (currentPatternEvent === 'S') { // Skip in Pattern
+		                advancePatternIndex(); // Advance pattern index using method
+		                currentArpNoteIndex++;
+		                if (arpMode === 'stableShuffled') stableShuffleIndex++; // Advance stable shuffle index
+		                stepType = 'skip';
+		                patternEventProcessed = true; // Pattern event processed, exit loop
+		                // Continue loop to check next pattern event with the same arp rhythm beat - No, Skip should just skip and move on.
+		            } else { // Should not happen ideally, but as a safety, break loop if pattern event is unexpected
+		                stepType = 'error'; // Indicate an error if needed
+		                patternEventProcessed = true; // Exit loop in case of error
+		                break;
+		            }
+		            if (patternEventProcessed) break; // Ensure loop exits after processing a pattern event
+		        }
+		    } else if (currentArpRhythmEvent === 'R') { // Rest in Arp Rhythm
+		        stepType = 'rest';
+		    }
+		
+		    updatePlaybackDisplay(stepType, (stepType === 'note') ? noteForStep : null); // Use noteForStep for display
+		    advanceArpRhythmIndex(); // Advance arp rhythm index using method AFTER processing beat/rest
+		}
 
         function playNote(note) {
             if (midiOutput) {
