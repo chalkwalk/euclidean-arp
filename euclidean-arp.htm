@@ -275,8 +275,8 @@
         </div>
         <div class="slider-container">
             <label for="baseVelocity">Base Velocity:</label>
-            <input type="range" id="baseVelocity" value="64" min="1" max="127" step="1">
-            <span id="baseVelocityValue" class="number-display">64</span>
+            <input type="range" id="baseVelocity" value="96" min="1" max="127" step="1">
+            <span id="baseVelocityValue" class="number-display">96</span>
         </div>
         <div class="slider-container">
             <label for="maxVelocity">Max Velocity:</label>
@@ -353,100 +353,33 @@
 
         // --- Octave Expansion ---
         let octaveCount = 1;
-        let baseVelocityValue = 64; // Default base velocity
+        let baseVelocityValue = 96; // Default base velocity
         let maxVelocityValue = 127; // Default max velocity
 
+        // -- Miscellaneous constants --
+        const defaultNotePressure = 0; // Pressure that new notes get initialized to
 
         /**
-         * Event listener for the Start Arpeggiator button.
+         * Event listeners for UI controls.
          */
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
-
-        /**
-         * Event listener for the Stop Arpeggiator button.
-         */
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
-
-        /**
-         * Event listener for changes to the Arp Mode dropdown.
-         * Updates the arpeggio mode and resets related state.
-         */
         document.getElementById('arpMode').addEventListener('change', function() {
-            const previousArpMode = arpMode;
             arpMode = this.value;
-            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
-            const newModeNoteList = updateModeNoteList();
-
-
-            if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
-                if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive'].includes(arpMode)) {
-                    currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[currentArpNoteIndex % previousModeNoteList.length], previousModeNoteList, newModeNoteList, currentArpNoteIndex);
-                } else {
-                    currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
-                    if (!currentArpNoteIndex) currentArpNoteIndex = 0;
-                }
-            }
-
             const chordNControls = document.getElementById('chordNControls');
             if (arpMode === 'chordN') {
                 chordNControls.style.display = 'block';
             } else {
                 chordNControls.style.display = 'none';
             }
+            updateArpeggiatorNoteListAndIndex();
         });
-
-        /**
-         * Event listener for changes to the Arp Sync Mode dropdown.
-         * Updates the arpeggio sync mode.
-         */
-        document.getElementById('arpSyncMode').addEventListener('change', function() {
-            arpSyncMode = this.value;
-        });
-
-        /**
-         * Event listener for changes to the Enable MPE checkbox.
-         * Toggles MPE input processing.
-         */
-        document.getElementById('enableMPE').addEventListener('change', function() {
-            isMPEEnabled = this.checked;
-        });
-
-        /**
-         * Event listener for changes to the MPE Global Input Channel dropdown.
-         * Sets the MPE global input channel.
-         */
-        document.getElementById('mpeGlobalInputChannel').addEventListener('change', function() {
-            mpeGlobalInputChannel = this.value;
-        });
-
-        /**
-         * Event listener for changes to the MPE Input Voice Channels input.
-         * Sets the number of MPE input voice channels.
-         */
-        document.getElementById('mpeInputVoiceChannels').addEventListener('change', function() {
-            mpeInputVoiceChannels = parseInt(this.value);
-        });
-
-        /**
-         * Event listener for changes to the MPE Output Mode dropdown.
-         * Sets the MPE output mode.
-         */
-        document.getElementById('mpeOutputMode').addEventListener('change', function() {
-            mpeOutputMode = this.value;
-        });
-
-        /**
-         * Event listener for changes to the MPE Global Output Channel dropdown.
-         * Sets the MPE global output channel.
-         */
-        document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() {
-            mpeGlobalOutputChannel = this.value;
-        });
-
-        /**
-         * Event listener for changes to the Octaves slider.
-         * Updates the octave count and regenerates held notes.
-         */
+        document.getElementById('arpSyncMode').addEventListener('change', function() { arpSyncMode = this.value; });
+        document.getElementById('enableMPE').addEventListener('change', function() { isMPEEnabled = this.checked; });
+        document.getElementById('mpeGlobalInputChannel').addEventListener('change', function() { mpeGlobalInputChannel = this.value; });
+        document.getElementById('mpeInputVoiceChannels').addEventListener('change', function() { mpeInputVoiceChannels = parseInt(this.value); });
+        document.getElementById('mpeOutputMode').addEventListener('change', function() { mpeOutputMode = this.value; });
+        document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() { mpeGlobalOutputChannel = this.value; });
         document.getElementById('octaves').addEventListener('input', function() {
             octaveCount = parseInt(this.value);
             document.getElementById('octavesValue').textContent = octaveCount;
@@ -454,11 +387,6 @@
             updateHeldNotesDisplay();
             updateModeNoteList();
         });
-
-        /**
-         * Event listener for changes to the Tempo Source dropdown.
-         * Switches between internal and external tempo sources.
-         */
         document.getElementById('tempoSource').addEventListener('change', function() {
             tempoSource = this.value;
             if (tempoSource === 'internal') {
@@ -467,22 +395,12 @@
                 clearInterval(internalClockInterval);
             }
         });
-
-        /**
-         * Event listener for changes to the Tempo BPM input.
-         * Updates the tempo in BPM and resets internal clock if active.
-         */
         document.getElementById('tempoBPM').addEventListener('change', function() {
             bpm = parseInt(this.value);
             if (tempoSource === 'internal') {
                 setupInternalClock();
             }
         });
-
-        /**
-         * Event listener for changes to the Clock Division dropdown.
-         * Updates the clock division and resets internal clock if active.
-         */
         document.getElementById('clockDivision').addEventListener('change', function() {
             clockDivision = this.value;
             clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
@@ -490,34 +408,25 @@
                 setupInternalClock();
             }
         });
-
-        /**
-         * Event listener for changes to the ChordN Value slider.
-         * Updates the N value for ChordN mode.
-         */
         document.getElementById('chordNValue').addEventListener('input', function() {
             chordNValue = parseInt(this.value);
             document.getElementById('chordNValueDisplay').textContent = chordNValue;
             updateModeNoteList(); // Re-generate note list when N changes
         });
-
-        /**
-         * Event listener for changes to the Base Velocity slider.
-         * Updates the base velocity value.
-         */
         document.getElementById('baseVelocity').addEventListener('input', function() {
             baseVelocityValue = parseInt(this.value);
             document.getElementById('baseVelocityValue').textContent = baseVelocityValue;
         });
-
-        /**
-         * Event listener for changes to the Max Velocity slider.
-         * Updates the max velocity value.
-         */
         document.getElementById('maxVelocity').addEventListener('input', function() {
             maxVelocityValue = parseInt(this.value);
             document.getElementById('maxVelocityValue').textContent = maxVelocityValue;
         });
+        document.getElementById('patternSteps').addEventListener('input', updateRhythmDisplays);
+        document.getElementById('patternBeats').addEventListener('input', updateRhythmDisplays);
+        document.getElementById('patternOffset').addEventListener('input', updateRhythmDisplays);
+        document.getElementById('arpRhythmSteps').addEventListener('input', updateRhythmDisplays);
+        document.getElementById('arpRhythmBeats').addEventListener('input', updateRhythmDisplays);
+        document.getElementById('arpRhythmOffset').addEventListener('input', updateRhythmDisplays);
 
 
         /**
@@ -634,6 +543,26 @@
             return [...new Set(expandedNotes)].sort((a, b) => a - b);
         }
 
+        /** --- REFACTORED ---
+         * Updates the arpeggiator's note list and index based on the current arp mode and held notes.
+         * This function is called whenever held notes or arp mode changes.
+         */
+        function updateArpeggiatorNoteListAndIndex() {
+            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
+            const previousArpNoteIndexVal = currentArpNoteIndex;
+
+            const newModeNoteList = updateModeNoteList();
+
+            if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
+                if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive'].includes(arpMode)) {
+                    currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[previousArpNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousArpNoteIndexVal);
+                } else {
+                    currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
+                    if (!currentArpNoteIndex) currentArpNoteIndex = 0;
+                }
+            }
+        }
+
 
         /**
          * Handles note on and note off events from both UI and MIDI sources.
@@ -645,8 +574,6 @@
             const isUI = source === 'ui';
             const heldSet = isUI ? heldNotesUI : heldNotesMIDI;
 
-            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
-            const previousArpNoteIndexVal = currentArpNoteIndex;
 
             if (isUI) {
                 if (!heldSet.has(note)) {
@@ -670,23 +597,13 @@
                 updatePianoKeyboardUI(note, 'midi');
             }
 
-            notePressures.set(note, 64); // Initialize pressure for new note to default (64)
+            notePressures.set(note, defaultNotePressure); // Initialize pressure for new note to default (0)
             updateHeldNotesDisplay();
 
             if (arpSyncMode === 'key' && !arpRunning) {
                 startArpeggiator();
             }
-            const newModeNoteList = updateModeNoteList();
-
-
-            if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
-                if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive'].includes(arpMode)) {
-                     currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[previousArpNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousArpNoteIndexVal);
-                } else {
-                    currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
-                    if (!currentArpNoteIndex) currentArpNoteIndex = 0;
-                }
-            }
+            updateArpeggiatorNoteListAndIndex(); // --- REFACTORED ---
 
 
             if (arpMode === 'shuffled' && arpRunning && shuffledNotesOrder.length > 0) {
@@ -716,8 +633,6 @@
          * @param {string} source - Source of the note event ('ui' or 'midi').
          */
         function noteOff(note, source = 'midi') { // UI note-off is handled in noteOn toggle logic
-            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
-            const previousArpNoteIndexVal = currentArpNoteIndex;
 
 
             if (source === 'midi') {
@@ -736,16 +651,7 @@
             if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
                 stopArpeggiator();
             }
-            const newModeNoteList = updateModeNoteList();
-
-            if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
-                 if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive'].includes(arpMode)) {
-                    currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[previousArpNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousArpNoteIndexVal);
-                } else {
-                    currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
-                    if (!currentArpNoteIndex) currentArpNoteIndex = 0;
-                }
-            }
+            updateArpeggiatorNoteListAndIndex(); // --- REFACTORED ---
 
 
             if (arpMode === 'shuffled' && arpRunning) {
@@ -1342,7 +1248,7 @@
                                     chordToPlay = currentModeNoteList;
                                     highlightPianoKeysForChord(chordToPlay); // Highlight all chord notes for Chord
                                 }
-                                playChord(chordToPlay);
+                                playNotes(chordToPlay); // --- REFACTORED to playNotes ---
                                 advancePatternIndex();
                                 stepType = 'note';
                                 highlightCurrentStep('note', null, true); // Indicate chord with highlightAllKeys=true
@@ -1361,7 +1267,7 @@
 
                         if (arpMode !== 'chord' && arpMode !== 'chordN') { // Play single note for non-chord modes
                             if (noteForStep !== '') {
-                                playNote(noteForStep);
+                                playNotes(noteForStep); // --- REFACTORED to playNotes ---
                                 currentArpNoteIndex++;
                                 if (arpMode === 'stableShuffled') stableShuffleIndex++;
                                 advancePatternIndex();
@@ -1411,18 +1317,25 @@
             advanceArpRhythmIndex();
         }
 
-        /**
-         * Sends a MIDI note on and note off message for a given note.
-         * Respects MPE output mode and channel settings and applies velocity based on aftertouch.
-         * @param {number} note - MIDI note number to play.
+        /** --- REFACTORED ---
+         * Calculates velocity based on pressure, base velocity, and max velocity.
+         * @param {number} pressure - MIDI pressure value (0-127).
+         * @returns {number} - Calculated velocity (0-127).
          */
-        function playNote(note) {
-            if (midiOutput) {
-                let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
-                let pressure = notePressures.get(note) || 0; // Get pressure, default to 0 if not found
-                let velocity = baseVelocityValue + (maxVelocityValue - baseVelocityValue) * (pressure / 127);
-                velocity = Math.round(velocity); // Ensure velocity is an integer
+        function calculateVelocity(pressure) {
+            let velocity = baseVelocityValue + (maxVelocityValue - baseVelocityValue) * (pressure / 127);
+            return Math.round(velocity);
+        }
 
+
+        /** --- REFACTORED ---
+         * Sends a MIDI note on and note off message. Handles MPE/non-MPE output.
+         * @param {number} note - MIDI note number.
+         * @param {number} velocity - MIDI velocity (0-127).
+         * @param {number} outputChannel - MIDI output channel (0-15).
+         */
+        function sendMidiNote(note, velocity, outputChannel) {
+            if (midiOutput) {
                 if (mpeOutputMode === 'mpe') {
                     midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, velocity]); // Pitch Bend, Note On with velocity
                     setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, 50); // Note Off
@@ -1433,28 +1346,21 @@
             }
         }
 
-        /**
-         * Sends MIDI note on and note off messages for a chord (multiple notes).
-         * @param {number[]} notes - Array of MIDI note numbers to play as a chord.
+
+        /** --- REFACTORED - Combines playNote and playChord ---
+         * Plays a single note or an array of notes.
+         * @param {number|number[]} notes - MIDI note number or array of MIDI note numbers to play.
          */
-        function playChord(notes) {
+        function playNotes(notes) {
             if (midiOutput) {
                 let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
-                for (const note of notes) {
-                    let pressure = notePressures.get(note) || 64; // Get pressure for each note, default to 64 if not found
-                    let velocity = baseVelocityValue + (maxVelocityValue - baseVelocityValue) * (pressure / 127);
-                    velocity = Math.round(velocity); // Ensure velocity is an integer
-                    if (mpeOutputMode === 'mpe') {
-                        midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, velocity]); // Pitch Bend, Note On with velocity
-                    } else {
-                        midiOutput.send([0x90 + outputChannel, note, velocity]); // Note On with velocity
-                    }
-                }
-                setTimeout(() => {
-                    for (const note of notes) {
-                        midiOutput.send([0x80 + outputChannel, note, 0]); // Note Off for each note
-                    }
-                }, 50);
+                const notesArray = Array.isArray(notes) ? notes : [notes]; // Ensure notes is always an array
+
+                notesArray.forEach(note => {
+                    let pressure = notePressures.get(note) || defaultNotePressure;
+                    let velocity = calculateVelocity(pressure);
+                    sendMidiNote(note, velocity, outputChannel);
+                });
             }
         }
 
@@ -1673,48 +1579,7 @@
         }
 
 
-        // --- Event listeners for parameter changes (sliders and dropdowns) ---
-        document.getElementById('patternSteps').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('patternBeats').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('patternOffset').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('arpRhythmSteps').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('arpRhythmBeats').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('arpRhythmOffset').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('arpMode').addEventListener('change', function() {
-            const previousArpMode = arpMode;
-            arpMode = this.value;
-            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
-            const newModeNoteList = updateModeNoteList();
-
-            if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
-                if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive'].includes(arpMode)) {
-                    currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[currentArpNoteIndex % previousModeNoteList.length], previousModeNoteList, newModeNoteList, currentArpNoteIndex);
-                } else {
-                    currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
-                    if (!currentArpNoteIndex) currentArpNoteIndex = 0;
-                }
-            }
-
-            const chordNControls = document.getElementById('chordNControls');
-            if (arpMode === 'chordN') {
-                chordNControls.style.display = 'block';
-            } else {
-                chordNControls.style.display = 'none';
-            }
-        });
-        document.getElementById('chordNValue').addEventListener('input', function() {
-            chordNValue = parseInt(this.value);
-            document.getElementById('chordNValueDisplay').textContent = chordNValue;
-            updateModeNoteList(); // Update note list when chordN value changes
-        });
-        document.getElementById('baseVelocity').addEventListener('input', function() {
-            baseVelocityValue = parseInt(this.value);
-            document.getElementById('baseVelocityValue').textContent = baseVelocityValue;
-        });
-        document.getElementById('maxVelocity').addEventListener('input', function() {
-            maxVelocityValue = parseInt(this.value);
-            document.getElementById('maxVelocityValue').textContent = maxVelocityValue;
-        });
+        // --- Event listeners for parameter changes (sliders and dropdowns) - CONSOLIDATED ---
 
 
         // --- Initialization ---
