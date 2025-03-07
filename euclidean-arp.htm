@@ -80,6 +80,9 @@
         #chordNControls {
             display: none; /* Initially hidden */
         }
+        #walkParams {
+            display: none; /* Initially hidden */
+        }
     </style>
 </head>
 <body>
@@ -197,7 +200,8 @@
             <option value="chordN">ChordN</option>
             <option value="convergeDiverge">Converge/Diverge</option>
             <option value="convergeDivergeInclusive">Converge/Diverge (Incl.)</option>
-
+            <option value="walk">Walk</option>
+            <option value="normalWalk">Normal Walk</option>
         </select><br>
 
         <div id="chordNControls">
@@ -205,6 +209,19 @@
                 <label for="chordNValue">N:</label>
                 <input type="range" id="chordNValue" value="2" min="1" max="16" step="1">
                 <span id="chordNValueDisplay" class="number-display">2</span>
+            </div>
+        </div><br>
+
+        <div id="walkParams" style="display: none;">
+            <div class="slider-container">
+                <label for="walkSkew">Walk Skew:</label>
+                <input type="range" id="walkSkew" value="0" min="-1" max="1" step="0.01">
+                <span id="walkSkewValue" class="number-display">0</span>
+            </div>
+            <div class="slider-container" id="walkDistanceContainer" style="display: none;">
+                <label for="walkDistance">Walk Distance:</label>
+                <input type="range" id="walkDistance" value="0" min="0" max="1" step="0.01">
+                <span id="walkDistanceValue" class="number-display">0</span>
             </div>
         </div><br>
 
@@ -326,6 +343,11 @@
         let currentModeNoteList = [];    // Array holding notes for the current arp mode
         let chordNValue = 2;             // Default N value for ChordN mode
 
+        // --- New Walk Mode Parameters ---
+        let walkSkew = 0;              // Skew parameter for walk modes, default 0
+        let walkDistance = 0;          // Distance parameter for normal walk mode, default 0
+
+
         // --- MPE and MIDI Channel Settings ---
         let isMPEEnabled = false;
         let mpeGlobalInputChannel = 'omni';
@@ -368,10 +390,24 @@
         document.getElementById('arpMode').addEventListener('change', function() {
             arpMode = this.value;
             const chordNControls = document.getElementById('chordNControls');
+            const walkParamsControls = document.getElementById('walkParams');
+            const walkDistanceContainer = document.getElementById('walkDistanceContainer');
+
             if (arpMode === 'chordN') {
                 chordNControls.style.display = 'block';
-            } else {
+                walkParamsControls.style.display = 'none';
+            } else if (arpMode === 'normalWalk') {
                 chordNControls.style.display = 'none';
+                walkParamsControls.style.display = 'block';
+                walkDistanceContainer.style.display = 'block'; // Show distance for normalWalk
+            } else if (arpMode === 'walk') {
+                chordNControls.style.display = 'none';
+                walkParamsControls.style.display = 'block';
+                walkDistanceContainer.style.display = 'none'; // Hide distance for walk
+            }
+             else {
+                chordNControls.style.display = 'none';
+                walkParamsControls.style.display = 'none';
             }
             updateArpeggiatorNoteListAndIndex();
         });
@@ -430,6 +466,16 @@
         document.getElementById('arpRhythmSteps').addEventListener('input', updateRhythmDisplays);
         document.getElementById('arpRhythmBeats').addEventListener('input', updateRhythmDisplays);
         document.getElementById('arpRhythmOffset').addEventListener('input', updateRhythmDisplays);
+
+        // --- New Event Listeners for Walk Mode Parameters ---
+        document.getElementById('walkSkew').addEventListener('input', function() {
+            walkSkew = parseFloat(this.value);
+            document.getElementById('walkSkewValue').textContent = walkSkew.toFixed(2);
+        });
+        document.getElementById('walkDistance').addEventListener('input', function() {
+            walkDistance = parseFloat(this.value);
+            document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2);
+        });
 
 
         /**
@@ -952,15 +998,14 @@
                 case 'diverge': currentModeNoteList = generateDivergeNoteList(notesToArp); break;
                 case 'convergeDiverge': currentModeNoteList = generateConvergeDivergeNoteList(notesToArp); break;
                 case 'convergeDivergeInclusive': currentModeNoteList = generateConvergeDivergeInclusiveNoteList(notesToArp); break;
-
-                case 'convergeDiverge': currentModeNoteList = generateConvergeDivergeNoteList(notesToArp); break;
-                case 'convergeDivergeInclusive': currentModeNoteList = generateConvergeDivergeInclusiveNoteList(notesToArp); break;
                 case 'played': currentModeNoteList = generatePlayedNoteList(notesToArp); break;
                 case 'random': currentModeNoteList = generateRandomNoteList(notesToArp); break;
                 case 'shuffled': currentModeNoteList = generateShuffledNoteList(notesToArp); break;
                 case 'stableShuffled': currentModeNoteList = generateStableShuffledNoteList(notesToArp); break;
                 case 'chord': currentModeNoteList = generateChordNoteList(notesToArp); break;
                 case 'chordN': currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue); break;
+                case 'walk': currentModeNoteList = generateUpNoteList(notesToArp); break; // Walk mode uses 'up' note list
+                case 'normalWalk': currentModeNoteList = generateUpNoteList(notesToArp); break; // Normal Walk mode uses 'up' note list
                 default: currentModeNoteList = generateUpNoteList(notesToArp); break; // 'up' is default
             }
             return currentModeNoteList;
@@ -1286,12 +1331,18 @@
                             noteForStep = currentModeNoteList[currentArpNoteIndex % currentModeNoteList.length];
                         } else if (arpMode === 'random' && notesToArp.length > 0) {
                             noteForStep = notesToArp[Math.floor(Math.random() * notesToArp.length)];
+                        } else if (arpMode === 'walk') { // Walk mode note selection
+                            noteForStep = currentModeNoteList[currentArpNoteIndex % currentModeNoteList.length];
+                        } else if (arpMode === 'normalWalk') { // Normal Walk mode note selection
+                            noteForStep = currentModeNoteList[currentArpNoteIndex % currentModeNoteList.length];
                         }
 
                         if (arpMode !== 'chord' && arpMode !== 'chordN') { // Play single note for non-chord modes
                             if (noteForStep !== '') {
                                 playNotes(noteForStep); // --- REFACTORED to playNotes ---
-                                currentArpNoteIndex++;
+                                if (arpMode !== 'walk' && arpMode !== 'normalWalk') {
+                                    currentArpNoteIndex++; // Increment index for non-walk modes
+                                }
                                 if (arpMode === 'stableShuffled') stableShuffleIndex++;
                                 advancePatternIndex();
                                 stepType = 'note';
@@ -1337,7 +1388,15 @@
             if (stepType !== null) {
                 updatePlaybackDisplay(stepType, (stepType === 'note' && arpMode !== 'chord' && arpMode !== 'chordN') ? noteForStep : null, (arpMode === 'chord' || arpMode === 'chordN'));
             }
-            advanceArpRhythmIndex();
+
+            // --- WALK MODE INDEX ADVANCEMENT ---
+            if (arpMode === 'walk') {
+                advanceWalkIndex(); // Advance index for walk mode
+            } else if (arpMode === 'normalWalk') {
+                advanceNormalWalkIndex(); // Advance index for normal walk mode
+            } else {
+                 advanceArpRhythmIndex(); // Advance rhythm index for other modes
+            }
         }
 
         /** --- REFACTORED ---
@@ -1602,6 +1661,66 @@
             // If stepType is 'rest' or 'skip', we unhighlighted at the start, and do nothing more with piano keys, which is correct.
         }
 
+        // --- NEW WALK MODE FUNCTIONS ---
+
+        /** Advances the arpeggio note index for 'walk' mode based on probabilities. */
+        function advanceWalkIndex() {
+            const probabilities = calculateWalkProbabilities(walkSkew);
+            const rand = Math.random();
+            if (rand < probabilities.prev) {
+                currentArpNoteIndex = (currentArpNoteIndex - 1 + currentModeNoteList.length) % currentModeNoteList.length; // Move to previous
+            } else if (rand < probabilities.prev + probabilities.current) {
+                // Stay at current index - do nothing
+            } else {
+                currentArpNoteIndex = (currentArpNoteIndex + 1) % currentModeNoteList.length; // Move to next
+            }
+             advanceArpRhythmIndex(); // Advance rhythm index after walk step
+        }
+
+        /** Calculates probabilities for walk mode based on walkSkew parameter. */
+        function calculateWalkProbabilities(skew) {
+            let prob_next, prob_current, prob_prev;
+            let subSkew = 0.5 + (skew / 2);
+            if (skew > 0) {
+                prob_next = (2 / 3) * skew + (1 / 3);
+                prob_current = (1 - prob_next) * subSkew;
+                prob_prev = (1 - prob_next - prob_current);
+            } else { // skew <= 0
+                prob_prev = (1 / 3) - (2 / 3) * skew;
+                prob_next = (1 - prob_prev) * subSkew;
+                prob_current = (1 - prob_prev - prob_next);
+            }
+            return { next: prob_next, current: prob_current, prev: prob_prev };
+        }
+
+
+        /** Advances the arpeggio note index for 'normalWalk' mode using normal distribution. */
+        function advanceNormalWalkIndex() {
+        	let ArpNoteCenterIndex = currentArpNoteIndex + 0.5;
+            const sigma = 0.3 + walkDistance; // Map walkDistance (0-1) to sigma (0.43-1.29)
+            const mu = 2 * walkSkew; // Map walkSkew (-1 to 1) to mean (-2 to 2) - adjust range if needed
+
+            const stepChange = sampleNormalDistribution(mu, sigma);
+            const maxStepChange = 3.4999; // Limit max step change to +/- 3
+            const clampedStepChange = Math.max(-maxStepChange, Math.min(maxStepChange, stepChange)); // Clamp step change
+
+            currentArpNoteIndex = (Math.floor(currentArpNoteIndex + clampedStepChange) + currentModeNoteList.length * Math.ceil(maxStepChange)) % currentModeNoteList.length; // Apply step change with wrap-around
+            advanceArpRhythmIndex(); // Advance rhythm index after normal walk step
+        }
+
+
+        /** Samples from a normal distribution using Box-Muller transform.  */
+        function sampleNormalDistribution(mu, sigma) {
+            let u1 = 0, u2 = 0;
+            while(u1 === 0) u1 = Math.random(); // Ensure u1 is not 0
+            while(u2 === 0) u2 = Math.random(); // Ensure u2 is not 0
+
+            const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+            // const z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2); // We only need one sample
+
+            return z0 * sigma + mu; // Scale and shift to desired distribution
+        }
+
 
         // --- Event listeners for parameter changes (sliders and dropdowns) - CONSOLIDATED ---
 
@@ -1613,6 +1732,8 @@
         document.getElementById('chordNValueDisplay').textContent = chordNValue; // Initialize ChordN display
         document.getElementById('baseVelocityValue').textContent = baseVelocityValue; // Initialize Base Velocity display
         document.getElementById('maxVelocityValue').textContent = maxVelocityValue; // Initialize Max Velocity display
+        document.getElementById('walkSkewValue').textContent = walkSkew.toFixed(2); // Initialize Walk Skew display
+        document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2); // Initialize Walk Distance display
 
 
     </script>
