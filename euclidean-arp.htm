@@ -201,7 +201,7 @@
             <option value="convergeDiverge">Converge/Diverge</option>
             <option value="convergeDivergeInclusive">Converge/Diverge (Incl.)</option>
             <option value="walk">Walk</option>
-            <option value="normalWalk">Normal Walk</option>
+            <option value="normalWalk">Normal Walk</normalWalk>
         </select><br>
 
         <div id="chordNControls">
@@ -354,6 +354,10 @@
         let mpeInputVoiceChannels = 8;
         let mpeOutputMode = 'non-mpe';
         let mpeGlobalOutputChannel = '1';
+
+        // MPE CHANNEL PRESSURE FIX - START
+        let mpeChannelNotes = new Array(16).fill(null); // Track notes per MPE channel
+        // MPE CHANNEL PRESSURE FIX - END
 
         // --- Tempo and Clock Variables ---
         let tempoSource = 'internal';
@@ -631,8 +635,9 @@
          * Updates held notes, UI, and starts/stops arpeggiator in Key Sync mode.
          * @param {number} note - MIDI note number.
          * @param {string} source - Source of the note event ('ui' or 'midi').
+         * @param {number} channel - MIDI channel of the note on message (only for MIDI source).
          */
-        function noteOn(note, source = 'ui') {
+        function noteOn(note, source = 'ui', channel = null) { // MPE CHANNEL PRESSURE FIX - ADD channel parameter
             const isUI = source === 'ui';
             const heldSet = isUI ? heldNotesUI : heldNotesMIDI;
 
@@ -661,6 +666,11 @@
                 heldNotes = expansionResult.expandedNotes; // --- UPDATED ---
                 octaveExpandedNoteMap = expansionResult.noteMap; // --- UPDATED ---
                 updatePianoKeyboardUI(note, 'midi');
+                // MPE CHANNEL PRESSURE FIX - START
+                if (isMPEEnabled && channel !== null) {
+                    mpeChannelNotes[channel] = note; // Track note on this channel
+                }
+                // MPE CHANNEL PRESSURE FIX - END
             }
 
             notePressures.set(note, defaultNotePressure);
@@ -697,10 +707,9 @@
          * Updates held notes, UI, and stops arpeggiator in Key Sync mode if no notes are held.
          * @param {number} note - MIDI note number.
          * @param {string} source - Source of the note event ('ui' or 'midi').
+         * @param {number} channel - MIDI channel of the note off message (only for MIDI source).
          */
-        function noteOff(note, source = 'midi') { // UI note-off is handled in noteOn toggle logic
-
-
+        function noteOff(note, source = 'midi', channel = null) { // MPE CHANNEL PRESSURE FIX - ADD channel parameter
             if (source === 'midi') {
                 heldNotesMIDI.delete(note);
                 const indexToRemove = rawHeldNotes.indexOf(note);
@@ -711,6 +720,11 @@
                 heldNotes = expansionResult.expandedNotes; // --- UPDATED ---
                 octaveExpandedNoteMap = expansionResult.noteMap; // --- UPDATED ---
                 updatePianoKeyboardUI(note, heldNotesUI.has(note) ? 'ui' : null);
+                // MPE CHANNEL PRESSURE FIX - START
+                if (isMPEEnabled && channel !== null) {
+                    mpeChannelNotes[channel] = null; // Clear note on this channel
+                }
+                // MPE CHANNEL PRESSURE FIX - END
             }
 
             notePressures.delete(note); // Remove pressure data for released note
@@ -1233,23 +1247,31 @@
             if (processMessage) {
                 if (commandHiBits === 0x90) { // Note On
                     if (velocity > 0) {
-                        noteOn(note, 'midi');
+                        noteOn(note, 'midi', channel); // MPE CHANNEL PRESSURE FIX - Pass channel to noteOn
                     } else {
-                        noteOff(note, 'midi'); // Note Off if velocity 0
+                        noteOff(note, 'midi', channel); // MPE CHANNEL PRESSURE FIX - Pass channel to noteOff
                     }
                 } else if (commandHiBits === 0x80) { // Note Off
-                    noteOff(note, 'midi');
+                    noteOff(note, 'midi', channel); // MPE CHANNEL PRESSURE FIX - Pass channel to noteOff
                 } else if (commandHiBits === 0xA0) { // Polyphonic Aftertouch (0xA0-0xAF)
                     if (notePressures.has(note)) {
                         notePressures.set(note, pressure);
                     }
                 } else if (commandHiBits === 0xD0) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
-                    // Apply channel pressure to all currently held MIDI notes
-                    heldNotesMIDI.forEach(heldNote => {
-                        if (notePressures.has(heldNote)) {
-                            notePressures.set(heldNote, pressure);
+                    // MPE CHANNEL PRESSURE FIX - START
+                    if (isMPEEnabled) {
+                        const channelNote = mpeChannelNotes[channel];
+                        if (channelNote !== null && notePressures.has(channelNote)) {
+                            notePressures.set(channelNote, pressure); // Apply pressure only to the note on this channel
                         }
-                    });
+                    } else { // Non-MPE Channel Pressure - Apply to all held MIDI notes (original behavior)
+                        heldNotesMIDI.forEach(heldNote => {
+                            if (notePressures.has(heldNote)) {
+                                notePressures.set(heldNote, pressure);
+                            }
+                        });
+                    }
+                    // MPE CHANNEL PRESSURE FIX - END
                 }
             }
         }
