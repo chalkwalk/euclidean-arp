@@ -11,9 +11,43 @@
         .note { background-color: yellow; }
         .held-notes-display { margin-bottom: 10px; }
         .parameter-group { margin-bottom: 10px; }
-        .note-selector { display: flex; margin-bottom: 10px; }
-        .note-button { padding: 5px 10px; margin-right: 5px; border: 1px solid #ccc; cursor: pointer; }
-        .note-button.selected { background-color: lightblue; }
+        .note-selector { margin-bottom: 10px; } /* Removed display: flex; */
+        .piano-keyboard { display: flex; }
+        .key {
+            height: 80px;
+            border-left: 1px solid black;
+            border-bottom: 1px solid black;
+            box-sizing: border-box;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 5px;
+            font-size: 10px;
+            user-select: none; /* Prevent text selection on click */
+        }
+        .white-key {
+            width: 30px;
+            background-color: white;
+            color: black;
+        }
+        .black-key {
+            width: 20px;
+            background-color: black;
+            color: white;
+            height: 55px;
+            margin-left: -10px;
+            margin-right: -10px;
+            z-index: 1; /* Ensure black keys are on top */
+        }
+        .key.key-held-ui {
+            background-color: lightblue;
+            color: black; /* Ensure text is readable on highlight */
+        }
+        .key.key-held-midi {
+            background-color: lightgreen;
+            color: black; /* Ensure text is readable on highlight */
+        }
         .playback-display { display: flex; overflow-x: hidden; border: 1px solid #ccc; height: 30px; margin-bottom: 10px; }
         .playback-step { width: 20px; height: 20px; border: 1px solid black; margin-right: 2px; text-align: center; line-height: 20px; font-size: 10px; }
         .playback-step.note { background-color: lightyellow; }
@@ -48,13 +82,9 @@
 
     <div class="note-selector">
         <strong>Select UI Notes:</strong>
-        <button class="note-button" data-note="60">C</button>
-        <button class="note-button" data-note="62">D</button>
-        <button class="note-button" data-note="64">E</button>
-        <button class="note-button" data-note="65">F</button>
-        <button class="note-button" data-note="67">G</button>
-        <button class="note-button" data-note="69">A</button>
-        <button class="note-button" data-note="71">B</button>
+        <div class="piano-keyboard" id="pianoKeyboard">
+            <!-- Piano keys will be generated here by JavaScript -->
+        </div>
     </div>
 
 
@@ -169,6 +199,8 @@
         let midiOutput;
         let midiInput; // Variable to store selected MIDI input
         let heldNotes = []; // Notes from MIDI input and UI buttons
+        let heldNotesUI = new Set(); // Track notes held by UI interaction
+        let heldNotesMIDI = new Set(); // Track notes held by MIDI input
         let patternRhythm = [];
         let arpRhythm = [];
         let arpRunning = false;
@@ -217,22 +249,6 @@
         });
         document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() {
             mpeGlobalOutputChannel = this.value;
-        });
-
-
-        // UI Note Selection (now directly triggers noteOn/Off)
-        const noteButtons = document.querySelectorAll('.note-button');
-        noteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const noteValue = parseInt(this.dataset.note);
-                if (this.classList.contains('selected')) { // Button is currently selected, so turn note off
-                    noteOff(noteValue);
-                    this.classList.remove('selected');
-                } else { // Button is not selected, so turn note on
-                    noteOn(noteValue);
-                    this.classList.add('selected');
-                }
-            });
         });
 
 
@@ -302,8 +318,6 @@
                     midiOutput = null; // No output device selected
                 }
             });
-
-
         }
 
         function onMIDIFailure() {
@@ -338,53 +352,76 @@
             if (processMessage) {
                 if (command >= 144 && command < 160) { // Note On
                     if (velocity > 0) {
-                        noteOn(note);
+                        noteOn(note, 'midi'); // Indicate MIDI source
                     } else {
-                        noteOff(note);
+                        noteOff(note, 'midi'); // Indicate MIDI source
                     }
                 } else if (command >= 128 && command < 144 || (command >= 144 && command < 160 && velocity === 0)) { // Note Off
-                    noteOff(note);
+                    noteOff(note, 'midi'); // Indicate MIDI source
                 }
                 // In future, handle MPE specific messages (pitch bend, CC74, pressure) here if needed based on isMPEEnabled and selected channel
             }
         }
 
-        function noteOn(note) {
-            if (!heldNotes.includes(note)) {
-                heldNotes.push(note);
-                updateHeldNotesDisplay();
-                // For stable shuffle, re-shuffle on note change
-                if (arpMode === 'stableShuffled' && arpRunning) {
-                    let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use empty array if no held notes
-                    stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-                    stableShuffleIndex = 0; // Reset index as notes changed
-                    lastNotesToArp = [...notesToArp]; // Update last notes
+        function noteOn(note, source = 'ui') {
+            if (source === 'ui') {
+                if (!heldNotesUI.has(note)) {
+                    heldNotesUI.add(note);
+                } else {
+                    heldNotesUI.delete(note); // Toggle off if already on
                 }
-                // Key Sync: Start arp if it's in key sync mode and not already running
-                if (arpSyncMode === 'key' && !arpRunning) {
-                    startArpeggiator(); // Start the arpeggiator when the first note is pressed in Key Sync mode
+                // Update heldNotes from both sources
+                heldNotes = Array.from(new Set([...heldNotesUI, ...heldNotesMIDI])).sort((a, b) => a - b);
+                updatePianoKeyboardUI(note, heldNotesUI.has(note) ? 'ui' : null); // Update UI key style
+            } else if (source === 'midi') {
+                if (!heldNotesMIDI.has(note)) {
+                    heldNotesMIDI.add(note);
                 }
+                // heldNotesUI takes precedence if both UI and MIDI hold the same note, in terms of visual representation.
+                heldNotes = Array.from(new Set([...heldNotesUI, ...heldNotesMIDI])).sort((a, b) => a - b);
+                updatePianoKeyboardUI(note, 'midi'); // Update UI key style for MIDI
+            }
+
+
+            updateHeldNotesDisplay();
+             // For stable shuffle, re-shuffle on note change
+            if (arpMode === 'stableShuffled' && arpRunning) {
+                let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use empty array if no held notes
+                stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+                stableShuffleIndex = 0; // Reset index as notes changed
+                lastNotesToArp = [...notesToArp]; // Update last notes
+            }
+            // Key Sync: Start arp if it's in key sync mode and not already running
+            if (arpSyncMode === 'key' && !arpRunning) {
+                startArpeggiator(); // Start the arpeggiator when the first note is pressed in Key Sync mode
+            }
+
+        }
+
+        function noteOff(note, source = 'ui') {
+            if (source === 'ui') {
+                // UI note-off is handled in noteOn toggle logic
+            } else if (source === 'midi') {
+                heldNotesMIDI.delete(note);
+                // Update heldNotes from both sources
+                heldNotes = Array.from(new Set([...heldNotesUI, ...heldNotesMIDI])).sort((a, b) => a - b);
+                updatePianoKeyboardUI(note, heldNotesUI.has(note) ? 'ui' : null); // Update UI key style, check if UI still holds it
+            }
+
+            updateHeldNotesDisplay();
+             // For stable shuffle, re-shuffle on note change
+            if (arpMode === 'stableShuffled' && arpRunning) {
+                let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use empty array if no held notes
+                stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+                stableShuffleIndex = 0; // Reset index as notes changed
+                lastNotesToArp = [...notesToArp]; // Update last notes
+            }
+            // Key Sync: Stop arp if it's in key sync mode and no notes are held
+            if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
+                stopArpeggiator(); // Stop the arpeggiator when the last note is released in Key Sync mode
             }
         }
 
-        function noteOff(note) {
-            const index = heldNotes.indexOf(note);
-            if (index > -1) {
-                heldNotes.splice(index, 1);
-                updateHeldNotesDisplay();
-                 // For stable shuffle, re-shuffle on note change
-                if (arpMode === 'stableShuffled' && arpRunning) {
-                    let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use empty array if no held notes
-                    stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-                    stableShuffleIndex = 0; // Reset index as notes changed
-                    lastNotesToArp = [...notesToArp]; // Update last notes
-                }
-                // Key Sync: Stop arp if it's in key sync mode and no notes are held
-                if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
-                    stopArpeggiator(); // Stop the arpeggiator when the last note is released in Key Sync mode
-                }
-            }
-        }
 
         function updateHeldNotesDisplay() {
             const noteNames = heldNotes.map(midiNoteToName);
@@ -714,6 +751,51 @@
             return true;
         }
 
+        function generatePianoKeyboardUI() {
+            const pianoKeyboard = document.getElementById('pianoKeyboard');
+            const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+            const startNote = 48; // Middle C (C4)
+            const numberOfKeys = 24; // One octave
+
+            for (let i = 0; i < numberOfKeys; i++) {
+                const noteValue = startNote + i;
+                const noteName = notes[i % 12];
+                const key = document.createElement('div');
+                key.classList.add('key');
+                key.dataset.note = noteValue;
+                key.textContent = noteName;
+                key.id = `pianoKey-${noteValue}`; // Add ID for easy access
+
+                if (noteName.includes('#')) {
+                    key.classList.add('black-key');
+                } else {
+                    key.classList.add('white-key');
+                }
+
+                key.addEventListener('click', function() {
+                    noteOn(noteValue, 'ui'); // Identify UI source
+                });
+
+                pianoKeyboard.appendChild(key);
+            }
+        }
+
+        function updatePianoKeyboardUI(note, source) {
+            const keyElement = document.getElementById(`pianoKey-${note}`);
+            if (!keyElement) return; // Key element might not be created if note is out of range.
+
+            keyElement.classList.remove('key-held-ui', 'key-held-midi'); // Remove any existing held styles
+
+            if (heldNotesUI.has(note) && source === 'ui') {
+                keyElement.classList.add('key-held-ui');
+            } else if (heldNotesUI.has(note) && source === null) { // If UI still holds after MIDI off
+                keyElement.classList.add('key-held-ui');
+            } else if (heldNotesMIDI.has(note) && source === 'midi') {
+                 keyElement.classList.add('key-held-midi');
+            }
+             // If neither UI nor MIDI holds it, it will revert to default style due to removal of classes above.
+        }
+
 
         // Event listeners for parameter changes (same as before)
         document.getElementById('patternSteps').addEventListener('change', updateRhythmDisplays);
@@ -742,7 +824,7 @@
             arpMode = this.value;
         });
 
-
+        generatePianoKeyboardUI();
         updateRhythmDisplays();
     </script>
 </body>
