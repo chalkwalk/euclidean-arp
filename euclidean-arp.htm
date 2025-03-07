@@ -54,6 +54,23 @@
         .playback-step.rest { background-color: lightcoral; }
         .playback-step.skip { background-color: lightblue; }
         .device-selector { margin-bottom: 10px; }
+        .slider-container {
+            display: flex;
+            align-items: center; /* Vertically align label and slider */
+        }
+        .slider-container label {
+            margin-right: 10px; /* Space between label and slider */
+            width: 60px; /* Fixed width for labels to align them */
+            text-align: right; /* Right-align label text */
+        }
+        .slider-container input[type="range"] {
+            width: 150px; /* Adjust slider width as needed */
+        }
+        .number-display {
+            width: 30px; /* Fixed width for number display */
+            text-align: center;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -90,23 +107,41 @@
 
     <div class="parameter-group">
         <h3>Pattern</h3>
-        <label for="patternSteps">Steps:</label>
-        <input type="number" id="patternSteps" value="5" min="1">
-        <label for="patternBeats">Beats:</label>
-        <input type="number" id="patternBeats" value="3" min="1">
-        <label for="patternOffset">Offset:</label>
-        <input type="number" id="patternOffset" value="4" min="0">
+        <div class="slider-container">
+            <label for="patternSteps">Steps:</label>
+            <input type="range" id="patternSteps" value="5" min="1" max="32" step="1">
+            <span id="patternStepsValue" class="number-display">5</span>
+        </div>
+        <div class="slider-container">
+            <label for="patternBeats">Beats:</label>
+            <input type="range" id="patternBeats" value="3" min="1" max="5" step="1">
+            <span id="patternBeatsValue" class="number-display">3</span>
+        </div>
+        <div class="slider-container">
+            <label for="patternOffset">Offset:</label>
+            <input type="range" id="patternOffset" value="0" min="-2" max="2" step="1">
+            <span id="patternOffsetValue" class="number-display">0</span>
+        </div>
         <div id="patternDisplay" class="rhythm-display"></div>
     </div>
 
     <div class="parameter-group">
         <h3>Arp Rhythm</h3>
-        <label for="arpRhythmSteps">Steps:</label>
-        <input type="number" id="arpRhythmSteps" value="7" min="1">
-        <label for="arpRhythmBeats">Beats:</label>
-        <input type="number" id="arpRhythmBeats" value="5" min="1">
-        <label for="arpRhythmOffset">Offset:</label>
-        <input type="number" id="arpRhythmOffset" value="2" min="0">
+        <div class="slider-container">
+            <label for="arpRhythmSteps">Steps:</label>
+            <input type="range" id="arpRhythmSteps" value="7" min="1" max="32" step="1">
+            <span id="arpRhythmStepsValue" class="number-display">7</span>
+        </div>
+        <div class="slider-container">
+            <label for="arpRhythmBeats">Beats:</label>
+            <input type="range" id="arpRhythmBeats" value="5" min="1" max="7" step="1">
+            <span id="arpRhythmBeatsValue" class="number-display">5</span>
+        </div>
+        <div class="slider-container">
+            <label for="arpRhythmOffset">Offset:</label>
+            <input type="range" id="arpRhythmOffset" value="0" min="-4" max="4" step="1">
+            <span id="arpRhythmOffsetValue" class="number-display">0</span>
+        </div>
         <div id="arpRhythmDisplay" class="rhythm-display"></div>
     </div>
 
@@ -547,24 +582,52 @@
                     count++;
                 }
                 }
-            for (let i = 0; i < offset; i++) {
+            const positiveOffset = offset >= 0 ? offset : steps + offset; // Handle negative offset
+            for (let i = 0; i < positiveOffset; i++) {
                 rhythm.unshift(rhythm.pop());
             }
             return rhythm;
         }
 
         function updateRhythmDisplays() {
-            const patternSteps = parseInt(document.getElementById('patternSteps').value);
-            const patternBeats = parseInt(document.getElementById('patternBeats').value);
-            const patternOffset = parseInt(document.getElementById('patternOffset').value);
+            const patternStepsSlider = document.getElementById('patternSteps');
+            const patternBeatsSlider = document.getElementById('patternBeats');
+            const patternOffsetSlider = document.getElementById('patternOffset');
+            const arpRhythmStepsSlider = document.getElementById('arpRhythmSteps');
+            const arpRhythmBeatsSlider = document.getElementById('arpRhythmBeats');
+            const arpRhythmOffsetSlider = document.getElementById('arpRhythmOffset');
+
+            const patternSteps = parseInt(patternStepsSlider.value);
+            const patternBeats = parseInt(patternBeatsSlider.value);
+            const patternOffset = parseInt(patternOffsetSlider.value);
             patternRhythm = generateEuclideanRhythm(patternSteps, patternBeats, patternOffset, 'N', 'S');
             displayRhythm(patternRhythm, 'patternDisplay');
+            document.getElementById('patternStepsValue').textContent = patternSteps;
+            document.getElementById('patternBeatsValue').textContent = patternBeats;
+            document.getElementById('patternOffsetValue').textContent = patternOffset;
 
-            const arpRhythmSteps = parseInt(document.getElementById('arpRhythmSteps').value);
-            const arpRhythmBeats = parseInt(document.getElementById('arpRhythmBeats').value);
-            const arpRhythmOffset = parseInt(document.getElementById('arpRhythmOffset').value);
+
+            const arpRhythmSteps = parseInt(arpRhythmStepsSlider.value);
+            const arpRhythmBeats = parseInt(arpRhythmBeatsSlider.value);
+            const arpRhythmOffset = parseInt(arpRhythmOffsetSlider.value);
             arpRhythm = generateEuclideanRhythm(arpRhythmSteps, arpRhythmBeats, arpRhythmOffset, 'B', 'R');
             displayRhythm(arpRhythm, 'arpRhythmDisplay');
+            document.getElementById('arpRhythmStepsValue').textContent = arpRhythmSteps;
+            document.getElementById('arpRhythmBeatsValue').textContent = arpRhythmBeats;
+            document.getElementById('arpRhythmOffsetValue').textContent = arpRhythmOffset;
+
+            // Update max beats for pattern and arp rhythm
+            patternBeatsSlider.max = patternSteps;
+            arpRhythmBeatsSlider.max = arpRhythmSteps;
+
+            // Update offset ranges dynamically based on steps
+            const patternOffsetMax = Math.ceil(patternSteps / 2);
+            patternOffsetSlider.min = -patternOffsetMax;
+            patternOffsetSlider.max = patternOffsetMax;
+
+            const arpRhythmOffsetMax = Math.ceil(arpRhythmSteps / 2);
+            arpRhythmOffsetSlider.min = -arpRhythmOffsetMax;
+            arpRhythmOffsetSlider.max = arpRhythmOffsetMax;
         }
 
         function displayRhythm(rhythmArray, displayElementId) {
@@ -1044,12 +1107,19 @@
 
 
         // Event listeners for parameter changes (same as before)
-        document.getElementById('patternSteps').addEventListener('change', updateRhythmDisplays);
-        document.getElementById('patternBeats').addEventListener('change', updateRhythmDisplays);
-        document.getElementById('patternOffset').addEventListener('change', updateRhythmDisplays);
-        document.getElementById('arpRhythmSteps').addEventListener('change', updateRhythmDisplays);
-        document.getElementById('arpRhythmBeats').addEventListener('change', updateRhythmDisplays);
-        document.getElementById('arpRhythmOffset').addEventListener('change', updateRhythmDisplays);
+        const patternStepsSlider = document.getElementById('patternSteps');
+        const patternBeatsSlider = document.getElementById('patternBeats');
+        const patternOffsetSlider = document.getElementById('patternOffset');
+        const arpRhythmStepsSlider = document.getElementById('arpRhythmSteps');
+        const arpRhythmBeatsSlider = document.getElementById('arpRhythmBeats');
+        const arpRhythmOffsetSlider = document.getElementById('arpRhythmOffset');
+
+        patternStepsSlider.addEventListener('input', updateRhythmDisplays);
+        patternBeatsSlider.addEventListener('input', updateRhythmDisplays);
+        patternOffsetSlider.addEventListener('input', updateRhythmDisplays);
+        arpRhythmStepsSlider.addEventListener('input', updateRhythmDisplays);
+        arpRhythmBeatsSlider.addEventListener('input', updateRhythmDisplays);
+        arpRhythmOffsetSlider.addEventListener('input', updateRhythmDisplays);
         document.getElementById('arpMode').addEventListener('change', function() {
              // Reset indices when changing arp mode for modes that use them
             if (['converge', 'diverge'].includes(this.value)) {
