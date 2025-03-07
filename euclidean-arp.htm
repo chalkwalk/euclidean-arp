@@ -257,12 +257,15 @@
         let stableShuffleIndex = 0;
         let lastNotesToArp = [];
         let convergeDivergeStep = 0;
+        let currentModeNoteList = []; // NEW: Array to hold the current arp mode's note list
 
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
         document.getElementById('arpMode').addEventListener('change', function() {
             arpMode = this.value;
+            updateModeNoteList(); // NEW: Update note list on mode change
+            currentArpNoteIndex = 0; // Reset index on mode change
         });
         document.getElementById('arpSyncMode').addEventListener('change', function() {
             arpSyncMode = this.value;
@@ -459,6 +462,8 @@
             if (arpSyncMode === 'key' && !arpRunning) {
                 startArpeggiator(); // Start the arpeggiator when the first note is pressed in Key Sync mode
             }
+            updateModeNoteList(); // NEW: Update note list on note change
+            currentArpNoteIndex = 0; // Reset index on note change (for now)
 
         }
 
@@ -484,6 +489,8 @@
             if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
                 stopArpeggiator(); // Stop the arpeggiator when the last note is released in Key Sync mode
             }
+            updateModeNoteList(); // NEW: Update note list on note change
+            currentArpNoteIndex = 0; // Reset index on note change (for now)
         }
 
 
@@ -543,73 +550,123 @@
             });
         }
 
-        function getArpNote(notesToArp) {
-            if (notesToArp.length === 0) return null; // Handle empty notes array
+        // NEW: Mode Note List Generation Functions
+        function generateUpNoteList(notes) {
+            return [...notes];
+        }
 
+        function generateDownNoteList(notes) {
+            return [...notes].reverse();
+        }
+
+        function generateUpDownNoteList(notes) {
+            if (notes.length <= 1) return [...notes];
+            const upDownList = [...notes];
+            for (let i = notes.length - 2; i >= 1; i--) {
+                upDownList.push(notes[i]);
+            }
+            return upDownList;
+        }
+
+        function generateUpDownInclusiveNoteList(notes) {
+            if (notes.length <= 1) return [...notes];
+            const upDownInclusiveList = [...notes];
+            for (let i = notes.length - 1; i >= 0; i--) { // Corrected loop condition
+                upDownInclusiveList.push(notes[i]);
+            }
+            return upDownInclusiveList;
+        }
+
+        function generateConvergeNoteList(notes) {
+            if (notes.length <= 1) return [...notes];
+            const convergeList = [];
+            let start = 0;
+            let end = notes.length - 1;
+            while (start <= end) {
+                convergeList.push(notes[start]);
+                if (start !== end) { // Prevent duplicates for odd length arrays
+                    convergeList.push(notes[end]);
+                }
+                start++;
+                end--;
+            }
+            return convergeList;
+        }
+
+        function generateDivergeNoteList(notes) {
+             if (notes.length <= 1) return [...notes];
+            const divergeList = [];
+            let start = Math.floor((notes.length - 1) / 2);
+            let end = Math.ceil((notes.length - 1) / 2);
+            while (start >= 0 && end < notes.length) {
+                divergeList.push(notes[start]);
+                if (start !== end) { // Prevent duplicates for odd length arrays
+                    divergeList.push(notes[end]);
+                }
+                start--;
+                end++;
+            }
+            return divergeList;
+        }
+
+
+        function generatePlayedNoteList(notes) {
+            return [...notes]; // Played mode is just the notes in the order they are held (which is already sorted)
+        }
+
+        function generateRandomNoteList(notes) {
+            return []; // Random mode doesn't need a pre-generated list
+        }
+
+        function generateShuffledNoteList(notes) {
+            return [...notes].sort(() => Math.random() - 0.5);
+        }
+
+        function generateStableShuffledNoteList(notes) {
+            return stableShuffledOrder; // Relies on stableShuffledOrder being updated elsewhere
+        }
+
+
+        // NEW: Function to update currentModeNoteList based on arpMode
+        function updateModeNoteList() {
+            let notesToArp = heldNotes.length > 0 ? heldNotes : [];
             switch (arpMode) {
                 case 'up':
-                    return notesToArp[currentArpNoteIndex % notesToArp.length];
+                    currentModeNoteList = generateUpNoteList(notesToArp);
+                    break;
                 case 'down':
-                    return notesToArp[notesToArp.length - 1 - (currentArpNoteIndex % notesToArp.length)];
+                    currentModeNoteList = generateDownNoteList(notesToArp);
+                    break;
                 case 'upDown':
-                    const upDownLength = 2 * notesToArp.length - 2;
-                    const upDownIndex = currentArpNoteIndex % upDownLength;
-                    if (upDownIndex < notesToArp.length) {
-                        return notesToArp[upDownIndex];
-                    } else {
-                        return notesToArp[notesToArp.length - 2 - (upDownIndex - notesToArp.length)];
-                    }
-                case 'upDownInclusive': // Corrected upDownInclusive mode
-                    const noteCount = notesToArp.length;
-                    if (noteCount === 0) return null;
-                    const cycleLength = 2 * noteCount - 2; // Length excluding repeats, for indexing
-                    const fullCycleLength = 2 * noteCount; // Length including repeats, for modulo
-                    let index;
-
-                    const currentCycleIndex = currentArpNoteIndex % fullCycleLength;
-
-                    if (currentCycleIndex < noteCount) {
-                        index = currentCycleIndex; // Upward motion
-                    } else {
-                        index = noteCount - 1 - (currentCycleIndex - noteCount); // Downward motion, reversed index
-                    }
-                    return notesToArp[index];
+                    currentModeNoteList = generateUpDownNoteList(notesToArp);
+                    break;
+                case 'upDownInclusive':
+                    currentModeNoteList = generateUpDownInclusiveNoteList(notesToArp);
+                    break;
                 case 'converge':
-                    let convergeStep = currentArpNoteIndex % notesToArp.length;
-                    let conNote;
-                    let conAbsoluteIndex = Math.floor(convergeStep / 2);
-                    if (convergeStep % 2 === 0) {
-                        conNote = notesToArp[conAbsoluteIndex];
-                    } else {
-                        conNote = notesToArp.at(-1-conAbsoluteIndex);
-                    }
-                    return conNote;
+                    currentModeNoteList = generateConvergeNoteList(notesToArp);
+                    break;
                 case 'diverge':
-                    let divergeStep = currentArpNoteIndex % notesToArp.length;
-                    let divNote;
-                    let divAbsoluteIndex = Math.floor((notesToArp.length - 1 - divergeStep) / 2);
-                    if (divergeStep % 2 === 0) {
-                        divNote = notesToArp[divAbsoluteIndex];
-                    } else {
-                        divNote = notesToArp.at(-1-divAbsoluteIndex);
-                    }
-                    return divNote;
+                    currentModeNoteList = generateDivergeNoteList(notesToArp);
+                    break;
                 case 'played':
-                    return notesToArp[currentArpNoteIndex % notesToArp.length]; // Same as 'up' for now, can be modified to remember played order if needed.
+                    currentModeNoteList = generatePlayedNoteList(notesToArp);
+                    break;
                 case 'random':
-                    return notesToArp[Math.floor(Math.random() * notesToArp.length)];
+                    currentModeNoteList = generateRandomNoteList(notesToArp); // Set to empty list for random
+                    break;
                 case 'shuffled':
-                    // Reshuffle every time we loop around notesToArp
-                    if (currentArpNoteIndex % notesToArp.length === 0) {
-                        shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-                    }
-                    return shuffledNotesOrder[currentArpNoteIndex % shuffledNotesOrder.length];
+                    currentModeNoteList = generateShuffledNoteList(notesToArp);
+                    break;
                 case 'stableShuffled':
-                    return stableShuffledOrder[stableShuffleIndex % stableShuffledOrder.length];
+                    currentModeNoteList = generateStableShuffledNoteList(notesToArp);
+                    break;
                 default: // 'up' is default
-                    return notesToArp[currentArpNoteIndex % notesToArp.length];
+                    currentModeNoteList = generateUpNoteList(notesToArp);
+                    break;
             }
         }
+
 
         function advanceArpRhythmIndex(steps = 1) {
             currentArpRhythmIndex = (currentArpRhythmIndex + steps) % arpRhythm.length;
@@ -661,7 +718,9 @@
             if (arpRunning) return;
 
             notesToArp.sort((a, b) => a - b);
+            updateModeNoteList(); // NEW: Generate initial note list on start
 
+            // Stable across arp restarts, but not note changes
             if (!arraysAreEqual(notesToArp, lastNotesToArp)) {
                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                 lastNotesToArp = [...notesToArp];
@@ -705,9 +764,8 @@
 
         function tick() {
             tickCounter++;
-            if (tickCounter >= clockDivisionCounterMax) {
+            if (tickCounter % clockDivisionCounterMax === 0) {
                 arpStep();
-                tickCounter = 0; // Reset counter after step
             }
         }
 
@@ -777,12 +835,18 @@
                 return; // Exit early, don't play notes
             }
 
-
-            if (arpMode === 'stableShuffled' && !arraysAreEqual(notesToArp, lastNotesToArp)) {
+            if (arpMode === 'shuffled') {
+                if (currentArpNoteIndex % notesToArp.length === 0) {
+                    currentModeNoteList = generateShuffledNoteList(notesToArp); // Regenerate shuffled list every loop
+                }
+            } else if (arpMode === 'stableShuffled' && !arraysAreEqual(notesToArp, lastNotesToArp)) {
                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                 stableShuffleIndex = 0;
                 lastNotesToArp = [...notesToArp];
+                currentModeNoteList = generateStableShuffledNoteList(notesToArp); // Update currentModeNoteList for stable shuffled too
             }
+
+
             if (notesToArp.length === 0 && arpSyncMode !== 'free') { // For key sync or transport sync, stop if no notes
                 stopArpeggiator();
                 return;
@@ -801,15 +865,26 @@
                 while (!patternEventProcessed) {
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
                     if (currentPatternEvent === 'N') { // Note in Pattern
-                        noteForStep = getArpNote(notesToArp);
-                        if (noteForStep !== null) {
-                            playNote(noteForStep);
+                        if (currentModeNoteList.length > 0 && arpMode !== 'random') { // NEW: Check if note list is populated and not random mode
+                            noteForStep = currentModeNoteList[currentArpNoteIndex % currentModeNoteList.length]; // NEW: Get note from list
+                        } else if (arpMode === 'random' && notesToArp.length > 0) {
+                            noteForStep = notesToArp[Math.floor(Math.random() * notesToArp.length)]; // Pick random note directly
                         }
-                        currentArpNoteIndex++;
-                        if (arpMode === 'stableShuffled') stableShuffleIndex++;
-                        advancePatternIndex();
-                        stepType = 'note'; // Set stepType to 'note' when a note is played
-                        patternEventProcessed = true;
+
+                        if (noteForStep !== '') { // Play note if we have one
+                            playNote(noteForStep);
+                            currentArpNoteIndex++;
+                            if (arpMode === 'stableShuffled') stableShuffleIndex++;
+                            advancePatternIndex();
+                            stepType = 'note'; // Set stepType to 'note' when a note is played
+                            patternEventProcessed = true;
+                        }  else { // No notes to play (e.g., random mode with no held notes)
+                            stepType = 'rest';
+                            patternEventProcessed = true;
+                            advancePatternIndex();
+                        }
+
+
                     } else if (currentPatternEvent === 'S') { // Skip in Pattern
                         advancePatternIndex();
                         currentArpNoteIndex++;
@@ -961,10 +1036,13 @@
                 shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
             }
             arpMode = this.value;
+            updateModeNoteList(); // NEW: Update note list on mode change - duplicated above for clarity
+            currentArpNoteIndex = 0; // Reset index on mode change - duplicated above for clarity
         });
 
         generatePianoKeyboardUI();
         updateRhythmDisplays();
+        updateModeNoteList(); // NEW: Initial note list generation on page load
     </script>
 </body>
 </html>
