@@ -67,7 +67,7 @@
             text-align: right; /* Right-align label text */
         }
         .slider-container input[type="range"] {
-            width: 150px; /* Adjust slider width as needed */
+            width: 300px; /* Adjust slider width as needed */
         }
         .number-display {
             width: 30px; /* Fixed width for number display */
@@ -366,7 +366,7 @@
             if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge'].includes(arpMode) && previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
                 currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[currentArpNoteIndex % previousModeNoteList.length], previousModeNoteList, newModeNoteList, currentArpNoteIndex);
             } else {
-                currentArpNoteIndex = 0; // Reset index for other modes or empty lists
+            	currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
             }
 
             const chordNControls = document.getElementById('chordNControls');
@@ -645,7 +645,7 @@
             if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge'].includes(arpMode) && previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
                  currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[previousArpNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousArpNoteIndexVal);
             } else {
-                currentArpNoteIndex = 0; // Reset index for other modes or empty lists
+            	currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
             }
 
 
@@ -700,7 +700,7 @@
              if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge'].includes(arpMode) && previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
                 currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[previousArpNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousArpNoteIndexVal);
             } else {
-                currentArpNoteIndex = 0; // Reset index for other modes or empty lists
+            	currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
             }
 
 
@@ -1027,8 +1027,11 @@
                     return foundIndex; // Return index of next note if found
                 }
             }
-
-            return 0; // Default to 0 if neither current nor next note is found
+            if (previousIndex) {
+                return (previousIndex % oldNoteList.length) % newNoteList.length;
+             } else {
+                 return 0; // Default to 0 if neither current nor next note is found
+             }
         }
 
 
@@ -1604,7 +1607,7 @@
             if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge'].includes(arpMode) && previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
                 currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[currentArpNoteIndex % previousModeNoteList.length], previousModeNoteList, newModeNoteList, currentArpNoteIndex);
             } else {
-                currentArpNoteIndex = 0; // Reset index for other modes or empty lists
+                currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
             }
 
             const chordNControls = document.getElementById('chordNControls');
