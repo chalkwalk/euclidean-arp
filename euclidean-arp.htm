@@ -228,7 +228,7 @@
         <label for="arpSyncMode">Arp Sync Mode:</label>
         <select id="arpSyncMode">
             <option value="free">Free Sync</option>
-            <option value="key">Key Sync</option>
+            <option value="key" selected="selected">Key Sync</option>
             <option value="transport">Transport Sync (Placeholder)</option>
         </select><br>
 
@@ -339,7 +339,7 @@
         let currentArpRhythmIndex = 0;  // Index for current step in arp rhythm
         let currentPatternIndex = 0;     // Index for current step in pattern
         let arpMode = 'up';             // Arpeggio mode (up, down, etc.)
-        let arpSyncMode = 'free';        // Arpeggio sync mode (free, key, transport)
+        let arpSyncMode = 'key';        // Arpeggio sync mode (free, key, transport)
         let currentModeNoteList = [];    // Array holding notes for the current arp mode
         let chordNValue = 2;             // Default N value for ChordN mode
 
@@ -1174,11 +1174,11 @@
             resetArpRhythmIndex();
             resetPatternIndex();
             currentArpNoteIndex = 0;
-            
+
             if ((arpMode === 'walk' || arpMode === 'normalWalk') && currentModeNoteList.length > 0) {
 	            currentArpNoteIndex = Math.floor(currentModeNoteList.length / 2); // Start at middle index
 		    }
-            
+
             playbackDisplayElem.innerHTML = '';
 
             if (tempoSource === 'internal') {
@@ -1230,10 +1230,11 @@
          */
         function onMIDIMessage(message) {
             const command = message.data[0];
-            const commandHiBits = command & 0xF0;
-            const channel = command & 0x0F;
-            const note = message.data[1];
-            const velocity = (message.data.length > 2) ? message.data[2] : 0;
+            const commandHiBits = (command & 0xF0) >> 4;
+            const commandLoBits = command & 0x0F;
+            const byte1 = message.data.length > 1 ? message.data[1] : 0;
+            const byte2 = message.data.length > 2 ? message.data[2] : 0;
+            const byte3 = message.data.length > 3 ? message.data[2] : 0;
 
             if (command === 0xF8) { // MIDI Clock Tick - 0xF8 (248 in decimal)
                 handleMIDITick();
@@ -1243,6 +1244,7 @@
             let processMessage = false;
 
             if (isMPEEnabled) {
+                const channel = commandLoBits;
                 const globalChannel = parseInt(mpeGlobalInputChannel);
                 const voiceChannelCount = mpeInputVoiceChannels;
                 if (mpeGlobalInputChannel === 'omni' || (channel >= globalChannel && channel < globalChannel + voiceChannelCount)) {
@@ -1253,31 +1255,38 @@
             }
 
             if (processMessage) {
-                if (commandHiBits === 0x90) { // Note On
+                if (commandHiBits === 0x9) { // Note On
+                    const channel = commandLoBits;
+                    const note = byte1;
+                    const velocity = byte2;
                     if (velocity > 0) {
-                        noteOn(note, 'midi', channel); // MPE CHANNEL PRESSURE FIX - Pass channel to noteOn
+                        noteOn(note, 'midi', channel);
                     } else {
-                        noteOff(note, 'midi', channel); // MPE CHANNEL PRESSURE FIX - Pass channel to noteOff
+                        noteOff(note, 'midi', channel);
                     }
-                } else if (commandHiBits === 0x80) { // Note Off
-                    noteOff(note, 'midi', channel); // MPE CHANNEL PRESSURE FIX - Pass channel to noteOff
-                } else if (commandHiBits === 0xA0) { // Polyphonic Aftertouch (0xA0-0xAF)
-                    const pressure = velocity;
+                } else if (commandHiBits === 0x8) { // Note Off
+                    const channel = commandLoBits;
+                    const note = byte1;
+                    noteOff(note, 'midi', channel);
+                } else if (commandHiBits === 0xA) { // Polyphonic Aftertouch (0xA0-0xAF)
+                    const note = byte1;
+                    const pressure = byte2;
                     if (notePressures.has(note)) {
                         notePressures.set(note, pressure); // velocity byte is pressure in poly aftertouch
                     }
-                } else if (commandHiBits == 0xB0) { // MIDI CC
-                	const ccNumber = note;
-                    const ccValue = velocity;
+                } else if (commandHiBits == 0xB) { // MIDI CC
+                    const channel = commandLoBits;
+                    const ccNumber = byte1;
+                    const ccValue = byte2;
                     const channelNote = mpeChannelNotes[channel];
                     if (isMPEEnabled && ccNumber == 74) {
 	                    if (channelNote !== null && noteMPEYAxis.has(channelNote)) {
 	                        noteMPEYAxis.set(channelNote, ccValue);
 	                    }
                     }
-                } else if (commandHiBits === 0xD0) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
-                    const pressure = note;
-                    // MPE CHANNEL PRESSURE FIX - START
+                } else if (commandHiBits === 0xD) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
+                    const channel = commandLoBits;
+                    const pressure = byte1;
                     if (isMPEEnabled) {
                         const channelNote = mpeChannelNotes[channel];
                         if (channelNote !== null && notePressures.has(channelNote)) {
@@ -1290,7 +1299,6 @@
                             }
                         });
                     }
-                    // MPE CHANNEL PRESSURE FIX - END
                 }
             }
         }
@@ -1686,7 +1694,7 @@
         function highlightCurrentStep(stepType, note, highlightAllKeys = false) {
             unhighlightPianoKey(); // Always unhighlight keys at the start of highlightCurrentStep
 
-            highlightRhythmStep('arpRhythmDisplay', (currentArpRhythmIndex + arpRhythm.length - 1) % arpRhythm.length);
+            highlightRhythmStep('arpRhythmDisplay', (currentArpRhythmIndex + arpRhythm.length) % arpRhythm.length);
             highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
 
             if (stepType === 'note') {
