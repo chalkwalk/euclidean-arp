@@ -21,13 +21,11 @@
         .rhythm-step.skip { background-color: #b2b2f0; border-color: #8f8fcc; color: #000050; /* Muted blue for skips */ }
         .rhythm-step.note { background-color: #f0f0b2; border-color: #ccf08f; color: #505000; /* Muted yellow for notes */ }
         .rhythm-step.current-step { border: 2px solid blue; /* Stronger current step highlight */ }
-        /* --- NEW DISABLED RHYTHM STEP STYLE --- */
         .rhythm-step.disabled-step {
             background-color: #e0e0e0; /* Greyed out background */
             border-color: #bbb;       /* Lighter border */
             color: #999;              /* Lighter text color */
         }
-        /* --- NEW GATE FLEX STYLE --- */
         .rhythm-step.gate-extended-step {
             background-color: #cceeff; /* Light blue for gate extension */
             border-color: #aaccdd;
@@ -83,7 +81,6 @@
             border-bottom: unset;
         }
 
-        /* --- NEW PLAYBACK KEYBOARD STYLES --- */
         .playback-keyboard-container { display: flex; justify-content: center; margin-bottom: 10px; } /* Center the playback keyboard */
         .playback-keyboard { display: flex; border: 1px solid #aaa; border-radius: 5px; overflow: hidden; width: 600px; height: 40px; /* Fixed width and height for mini keyboard */ }
         .playback-key {
@@ -290,7 +287,6 @@
     <div class="note-selector" title="Use this keyboard to select notes with the mouse.">
         <strong>Select UI Notes:</strong>
         <div class="piano-keyboard" id="pianoKeyboard">
-            <!-- Piano keys will be generated here by JavaScript -->
         </div>
     </div>
 
@@ -403,7 +399,6 @@
         <div id="pattern-tab" class="tab-content tab-pane">
             <fieldset class="parameter-group">
                 <legend><h3>Pattern Settings</h3></legend>
-                <!-- --- NEW Pattern Enable Checkbox --- -->
                 <div class="slider-container" title="Enable or disable the pattern rhythm.">
                     <input type="checkbox" id="enablePattern" checked title="Enable pattern rhythm to introduce skips.">
                     <label for="enablePattern" style="text-align: left; width: auto;">Enable Pattern</label>
@@ -430,8 +425,7 @@
         <div id="rhythm-tab" class="tab-content tab-pane">
             <fieldset class="parameter-group">
                 <legend><h3>Rhythm Settings</h3></legend>
-                 <!-- --- NEW Rhythm Enable Checkbox --- -->
-                <div class="slider-container" title="Enable or disable the arpeggio rhythm.">
+                 <div class="slider-container" title="Enable or disable the arpeggio rhythm.">
                     <input type="checkbox" id="enableRhythm" checked title="Enable arpeggio rhythm to introduce rests.">
                     <label for="enableRhythm" style="text-align: left; width: auto;">Enable Rhythm</label>
                 </div>
@@ -503,7 +497,6 @@
                         <input type="range" id="chordNValue" value="2" min="1" max="16" step="1" title="Set the number of notes per chord in ChordN arpeggio mode.">
                         <span id="chordNValueDisplay" class="number-display">2</span>
                     </div>
-                    <!-- --- NEW ChordN Ordering Dropdown --- -->
                     <div class="slider-container" title="Ordering mode for ChordN chords.">
                         <label for="chordNOrdering">ChordN Ordering:</label>
                         <select id="chordNOrdering" title="Select the ordering mode for ChordN chords.">
@@ -513,7 +506,6 @@
                             <option value="upDownInclusive">Up/Down (Incl.)</option>
                             <option value="converge">Converge</option>
                             <option value="diverge">Diverge</option>
-                            <!-- Add more modes as implemented -->
                         </select>
                     </div>
                 </div>
@@ -531,13 +523,11 @@
                     </div>
                 </div>
 
-                <!-- --- INSERT SUB ARP SCALE HERE --- -->
                 <div class="slider-container" title="Percentage of clock division used for sub-arpeggiation of chords.">
                     <label for="subArpScale">Sub Arp Scale (%):</label>
                     <input type="range" id="subArpScale" value="0" min="0" max="100" step="1" title="Control the timing spread of notes within chords. 0% for no sub-arp, 100% to fill clock division.">
                     <span id="subArpScaleValue" class="number-display">0</span>
                 </div>
-                <!-- --- NEW Sub Arp Mode Dropdown --- -->
                 <div class="slider-container" title="Arpeggio mode for sub-arpeggiation of chords.">
                     <label for="subArpMode">Sub Arp Mode:</label>
                     <select id="subArpMode" title="Select the arpeggio mode for sub-arpeggiation within chords.">
@@ -546,10 +536,8 @@
                         <option value="random">Random</option>
                         <option value="converge">Converge</option>
                         <option value="diverge">Diverge</option>
-                        <!-- Add more modes as implemented -->
                     </select>
                 </div>
-                <!-- --- END INSERT SUB ARP SCALE --- -->
 
                 <div class="slider-container" title="Synchronization mode for the arpeggiator.">
                     <label for="arpSyncMode">Arp Sync Mode:</label>
@@ -580,7 +568,6 @@
                     <input type="range" id="gateLength" value="50" min="1" max="150" step="1" title="Adjust the gate length of arpeggiated notes as a percentage of the clock division duration.">
                     <span id="gateLengthValue" class="number-display">50</span>
                 </div>
-                <!-- --- NEW Gate Flex Checkbox --- -->
                 <div class="slider-container" title="Enable gate flex to extend note gates based on rhythm density.">
                     <input type="checkbox" id="enableGateFlex" title="Enable Gate Flex to make gates longer before rests.">
                     <label for="enableGateFlex" style="text-align: left; width: auto;">Enable Gate Flex</label>
@@ -589,7 +576,6 @@
         </div>
     </div>
 
-    <!-- --- NEW PLAYBACK KEYBOARD CONTAINER --- -->
     <div class="playback-keyboard-container" title="Visual display of held and playing notes. Not interactive.">
         <div class="playback-keyboard" id="playbackKeyboardDisplay">
             <!-- Playback piano keys will be generated here by JavaScript -->
@@ -629,9 +615,8 @@
         let midiAccess = null;
         let midiOutput = null;
         let midiInput = null;
-        let isSustainPedalPressed = false; // NEW: Track sustain pedal state
-        let sustainedNotesMIDI = new Set();  // NEW: Track MIDI notes sustained by pedal
-
+        let isSustainPedalPressed = false;
+        let sustainedNotesMIDI = new Set();
 
         // --- Rhythm Event Constants ---
         const RHYTHM_BEAT = 'B';
@@ -646,39 +631,37 @@
         let heldNotesMIDI = new Set(); // Stores notes held by MIDI input
         let notePressures = new Map(); // Stores pressure values for each held MIDI note (for aftertouch/velocity)
         let noteMPEYAxis = new Map(); // Stores MPE Y Axis values
-        let octaveExpandedNoteMap = new Map(); // Map for octave expanded notes to original notes - might be redundant now
-        let playedNoteOrder = []; // NEW: Stores notes in the order they were played
+        let octaveExpandedNoteMap = new Map();
+        let playedNoteOrder = []; // Stores notes in the order they were played
 
         // --- Rhythm Pattern Variables ---
         let patternRhythm = []; // Euclidean rhythm for note pattern (Note/Skip)
-        let rhythm = [];     // Euclidean rhythm for arpeggio rhythm (Beat/Rest)
-        let rhythmGateMultipliers = []; // NEW: Array to store gate multipliers for rhythm
-        // --- NEW Rhythm Enable Flags ---
+        let rhythm = []; // Euclidean rhythm for arpeggio rhythm (Beat/Rest)
+        let rhythmGateMultipliers = []; // Array to store gate multipliers for rhythm
         let isPatternDisabled = false;
         let isRhythmDisabled = false;
 
-
         // --- Arpeggiator State Variables ---
-        let arpRunning = false;         // Arpeggiator play/stop state
-        let arpInterval = null;         // Interval for internal clock
-        let currentNoteIndex = 0;    // Index for current note in arpeggio
-        let currentRhythmIndex = 0;  // Index for current step in arp rhythm
-        let currentPatternIndex = 0;     // Index for current step in pattern
-        let arpMode = 'up';             // Arpeggio mode (up, down, etc.)
-        let arpSyncMode = 'key';        // Arpeggio sync mode (free, key, transport)
-        let currentModeNoteList = [];    // Array holding notes for the current arp mode
-        let chordNValue = 2;             // Default N value for ChordN mode
+        let arpRunning = false; // Arpeggiator play/stop state
+        let arpInterval = null; // Interval for internal clock
+        let currentNoteIndex = 0; // Index for current note in arpeggio
+        let currentRhythmIndex = 0; // Index for current step in arp rhythm
+        let currentPatternIndex = 0; // Index for current step in pattern
+        let arpMode = 'up'; // Arpeggio mode (up, down, etc.)
+        let arpSyncMode = 'key'; // Arpeggio sync mode (free, key, transport)
+        let currentModeNoteList = []; // Array holding notes for the current arp mode
+        let chordNValue = 2; // Default N value for ChordN mode
 
-        // --- New Walk Mode Parameters ---
-        let walkSkew = 0;              // Skew parameter for walk modes, default 0
-        let walkDistance = 0;          // Distance parameter for normal walk mode, default 0
+        // --- Walk Mode Parameters ---
+        let walkSkew = 0; // Skew parameter for walk modes, default 0
+        let walkDistance = 0; // Distance parameter for normal walk mode, default 0
 
         // --- Sub Arp ---
         let subArpScalePercentage = 0; // Default sub arp scale
-        let subArpMode = 'up';         // Default sub arp mode
+        let subArpMode = 'up'; // Default sub arp mode
 
         // --- Gate Flex ---
-        let isGateFlexEnabled = false; // NEW: Enable/disable gate flex
+        let isGateFlexEnabled = false; // Enable/disable gate flex
 
         // --- MPE and MIDI Channel Settings ---
         let isMPEEnabled = false;
@@ -705,10 +688,10 @@
         let lastTickTime = 0;
 
         // --- Arpeggio Mode Specific State ---
-        let shuffledNotesOrder = [];        // Stores shuffled order of notes for 'shuffled' mode
-        let stableShuffledOrder = [];       // Stores stable shuffled order for 'stableShuffled' mode (persists across restarts)
-        let stableShuffleIndex = 0;         // Index for stable shuffled mode
-        let lastNotesToArp = [];            // Last set of notes used for stable shuffle comparison
+        let shuffledNotesOrder = [];
+        let stableShuffledOrder = [];
+        let stableShuffleIndex = 0;
+        let lastNotesToArp = [];
 
         // --- UI Elements and Display ---
         const playbackDisplayElem = document.getElementById('playbackDisplay');
@@ -724,7 +707,6 @@
         // --- Gate Length ---
         let gateLengthPercentage = 50; // Default gate length percentage
         let gateLengthValueDisplay = document.getElementById('gateLengthValue'); // Get display element
-
 
         // -- Miscellaneous constants --
         const defaultNotePressure = 0; // Pressure that new notes get initialized to
@@ -752,24 +734,35 @@
             } else if (arpMode === 'normalWalk') {
                 chordNControls.style.display = 'none';
                 walkParamsControls.style.display = 'block';
-                walkDistanceContainer.style.display = 'block'; // Show distance for normalWalk
+                walkDistanceContainer.style.display = 'block';
             } else if (arpMode === 'walk') {
                 chordNControls.style.display = 'none';
                 walkParamsControls.style.display = 'block';
-                walkDistanceContainer.style.display = 'none'; // Hide distance for walk
-            }
-             else {
+                walkDistanceContainer.style.display = 'none';
+            } else {
                 chordNControls.style.display = 'none';
                 walkParamsControls.style.display = 'none';
             }
             updateArpeggiatorNoteListAndIndex();
         });
-        document.getElementById('arpSyncMode').addEventListener('change', function() { arpSyncMode = this.value; });
-        document.getElementById('enableMPE').addEventListener('change', function() { isMPEEnabled = this.checked; });
-        document.getElementById('mpeGlobalInputChannel').addEventListener('change', function() { mpeGlobalInputChannel = this.value; });
-        document.getElementById('mpeInputVoiceChannels').addEventListener('change', function() { mpeInputVoiceChannels = parseInt(this.value); });
-        document.getElementById('mpeOutputMode').addEventListener('change', function() { mpeOutputMode = this.value; });
-        document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() { mpeGlobalOutputChannel = this.value; });
+        document.getElementById('arpSyncMode').addEventListener('change', function() {
+            arpSyncMode = this.value;
+        });
+        document.getElementById('enableMPE').addEventListener('change', function() {
+            isMPEEnabled = this.checked;
+        });
+        document.getElementById('mpeGlobalInputChannel').addEventListener('change', function() {
+            mpeGlobalInputChannel = this.value;
+        });
+        document.getElementById('mpeInputVoiceChannels').addEventListener('change', function() {
+            mpeInputVoiceChannels = parseInt(this.value);
+        });
+        document.getElementById('mpeOutputMode').addEventListener('change', function() {
+            mpeOutputMode = this.value;
+        });
+        document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() {
+            mpeGlobalOutputChannel = this.value;
+        });
         document.getElementById('octaves').addEventListener('input', function() {
             octaveCount = parseInt(this.value);
             document.getElementById('octavesValue').textContent = octaveCount;
@@ -779,17 +772,17 @@
             tempoSource = this.value;
             if (tempoSource === 'internal') {
                 setupInternalClock();
-                updateTempoDisplay(); // Update display immediately when switching to internal
+                updateTempoDisplay();
             } else {
                 clearInterval(internalClockInterval);
-                updateTempoDisplay('External MIDI Clock'); // Update display immediately when switching to external
+                updateTempoDisplay('External MIDI Clock');
             }
         });
-        tempoBPMInput.addEventListener('change', function() { // Event listener for BPM input change
+        tempoBPMInput.addEventListener('change', function() {
             bpm = parseInt(this.value);
             if (tempoSource === 'internal') {
                 setupInternalClock();
-                updateTempoDisplay(); // Update display immediately when BPM changes
+                updateTempoDisplay();
             }
         });
         document.getElementById('clockDivision').addEventListener('change', function() {
@@ -802,7 +795,7 @@
         document.getElementById('chordNValue').addEventListener('input', function() {
             chordNValue = parseInt(this.value);
             document.getElementById('chordNValueDisplay').textContent = chordNValue;
-            updateModeNoteList(); // Re-generate note list when N changes
+            updateModeNoteList();
         });
         document.getElementById('baseVelocity').addEventListener('input', function() {
             baseVelocityValue = parseInt(this.value);
@@ -835,27 +828,24 @@
             document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2);
         });
         document.getElementById('chordNOrdering').addEventListener('change', function() {
-            updateModeNoteList(); // Re-generate note list when ChordN ordering changes
+            updateModeNoteList();
         });
         document.getElementById('subArpMode').addEventListener('change', function() {
-            subArpMode = this.value; // Update subArpMode variable
+            subArpMode = this.value;
         });
-        // --- NEW Event Listeners for Enable/Disable Checkboxes ---
         document.getElementById('enablePattern').addEventListener('change', function() {
-            isPatternDisabled = !this.checked; // Invert logic: checked means enabled, !checked means disabled
-            updateRhythmDisplays(); // Update rhythm display to reflect enabled/disabled state
-            updatePatternControlsState(); // Update pattern controls enabled/disabled state
+            isPatternDisabled = !this.checked;
+            updateRhythmDisplays();
+            updatePatternControlsState();
         });
         document.getElementById('enableRhythm').addEventListener('change', function() {
-            isRhythmDisabled = !this.checked; // Invert logic: checked means enabled, !checked means disabled
-            updateRhythmDisplays(); // Update rhythm display to reflect enabled/disabled state
-            updateRhythmControlsState(); // Update rhythm controls enabled/disabled state
+            isRhythmDisabled = !this.checked;
+            updateRhythmDisplays();
+            updateRhythmControlsState();
         });
-        // --- NEW Event Listener for Gate Flex Checkbox ---
         document.getElementById('enableGateFlex').addEventListener('change', function() {
             isGateFlexEnabled = this.checked;
         });
-
 
         // --- TAB SWITCHING ---
         document.querySelectorAll('.tab-button').forEach(button => {
@@ -869,19 +859,18 @@
         });
 
         /**
-          * Updates the tempo display in the UI.
-          * @param {string} source - Tempo source ('Internal' or 'External MIDI Clock').
-          *                          Defaults to 'Internal' if tempoSource is 'internal', otherwise 'External MIDI Clock'.
-          */
+         * Updates the tempo display in the UI.
+         * @param {string} [source] - Tempo source ('Internal' or 'External MIDI Clock').
+         *                           Defaults to 'Internal' if tempoSource is 'internal', otherwise 'External MIDI Clock'.
+         */
         function updateTempoDisplay(source) {
             if (!source) {
                 source = tempoSource === 'internal' ? 'Internal' : 'External MIDI Clock';
             }
-            tempoBPMInput.value = bpm; // Update the input field's value
-            tempoBPMInput.title = `Tempo (BPM): ${source === 'Internal' ? 'Editable' : 'Controlled by external MIDI clock'}`; // Update tooltip
-            tempoBPMInput.readOnly = source !== 'Internal'; // Set read-only state based on source
+            tempoBPMInput.value = bpm;
+            tempoBPMInput.title = `Tempo (BPM): ${source === 'Internal' ? 'Editable' : 'Controlled by external MIDI clock'}`;
+            tempoBPMInput.readOnly = source !== 'Internal';
         }
-
 
         /**
          * Initializes WebMIDI and sets up MIDI input and output device selectors.
@@ -954,13 +943,13 @@
          */
         function selectMidiInput(inputId) {
             if (midiInput) {
-                midiInput.onmidimessage = null; // Remove listener from previous input
+                midiInput.onmidimessage = null;
             }
             if (inputId) {
                 midiInput = midiAccess.inputs.get(inputId);
-                midiInput.onmidimessage = onMIDIMessage; // Add listener to new input
+                midiInput.onmidimessage = onMIDIMessage;
             } else {
-                midiInput = null; // No input device selected
+                midiInput = null;
             }
         }
 
@@ -972,11 +961,17 @@
             if (outputId) {
                 midiOutput = midiAccess.outputs.get(outputId);
             } else {
-                midiOutput = null; // No output device selected
+                midiOutput = null;
             }
         }
 
-
+        /**
+         * Generates octave-expanded notes from raw held notes.
+         * Ensures no note appears more than once in the expanded sequence.
+         * @param {number[]} inputNotes - Array of raw MIDI notes.
+         * @param {number} octaves - Number of octaves to expand.
+         * @returns {number[]} - Array of unique, octave-expanded MIDI notes.
+         */
         function generateOctaveExpandedNotes(inputNotes, octaves) {
             const expandedNotes = [];
             const seenNotes = new Set();
@@ -994,13 +989,12 @@
             return expandedNotes;
         }
 
-
         /**
          * Updates the arpeggiator's note list and index based on the current arp mode and held notes.
-         * This function is called whenever held notes or arp mode changes.
+         * Called whenever held notes or arp mode changes to maintain continuity.
          */
         function updateArpeggiatorNoteListAndIndex() {
-            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
+            const previousModeNoteList = [...currentModeNoteList];
             const previousNoteIndexVal = currentNoteIndex;
 
             const newModeNoteList = updateModeNoteList();
@@ -1009,19 +1003,18 @@
                 if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive', 'walk', 'normalWalk', 'played'].includes(arpMode)) {
                     currentNoteIndex = findClosestNoteIndex(previousModeNoteList[previousNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousNoteIndexVal);
                 } else {
-                    currentNoteIndex = (currentNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
+                    currentNoteIndex = (currentNoteIndex % previousModeNoteList.length) % newModeNoteList.length;
                     if (!currentNoteIndex) currentNoteIndex = 0;
                 }
             }
         }
-
 
         /**
          * Handles note on events from both UI and MIDI sources.
          * Updates held notes, UI, and starts arpeggiator in Key Sync mode.
          * @param {number} note - MIDI note number.
          * @param {string} source - Source of the note event ('ui' or 'midi').
-         * @param {number} channel - MIDI channel of the note on message (only for MIDI source).
+         * @param {number} [channel] - MIDI channel of the note on message (only for MIDI source).
          */
         function noteOn(note, source = 'ui', channel = null) {
             addHeldNote(note, source, channel);
@@ -1032,14 +1025,18 @@
          * Updates held notes, UI, and stops arpeggiator in Key Sync mode if no notes are held.
          * @param {number} note - MIDI note number.
          * @param {string} source - Source of the note event ('ui' or 'midi').
-         * @param {number} channel - MIDI channel of the note off message (only for MIDI source).
+         * @param {number} [channel] - MIDI channel of the note off message (only for MIDI source).
          */
         function noteOff(note, source = 'midi', channel = null) {
             removeHeldNote(note, source, channel);
         }
 
-
-        /** Adds a note to held notes, handling octave expansion and UI update. */
+        /**
+         * Adds a note to held notes, handling octave expansion and UI update.
+         * @param {number} note - MIDI note number to add.
+         * @param {string} source - Source of the note event ('ui' or 'midi').
+         * @param {number} [channel] - MIDI channel (for MIDI source).
+         */
         function addHeldNote(note, source = 'ui', channel = null) {
             const isUI = source === 'ui';
             const heldSet = isUI ? heldNotesUI : heldNotesMIDI;
@@ -1060,7 +1057,7 @@
                         }
                     }
                 }
-                updateHeldNotesArrays(); // Update heldNotes array after raw notes change
+                updateHeldNotesArrays();
                 updatePianoUIForNote(note, source);
             } else { // source === 'midi'
                 if (!heldNotesMIDI.has(note)) {
@@ -1068,10 +1065,10 @@
                     rawHeldNotes.push(note);
                     playedNoteOrder.push(note);
                 }
-                updateHeldNotesArrays(); // Update heldNotes array after raw notes change
+                updateHeldNotesArrays();
                 updatePianoUIForNote(note, 'midi');
                 if (isMPEEnabled && channel !== null) {
-                    mpeChannelNotes[channel] = note; // Track note on this channel
+                    mpeChannelNotes[channel] = note;
                 }
             }
 
@@ -1093,7 +1090,7 @@
             } else if (arpMode === 'stableShuffled' && arpRunning && stableShuffledOrder.length > 0) {
                 const insertionIndex = Math.floor(Math.random() * stableShuffledOrder.length);
                 stableShuffledOrder.splice(insertionIndex, 0, note);
-                 if (insertionIndex <= stableShuffleIndex) {
+                if (insertionIndex <= stableShuffleIndex) {
                     stableShuffleIndex++;
                 }
             } else if (arpMode === 'shuffled' && arpRunning && shuffledNotesOrder.length === 0) {
@@ -1103,13 +1100,17 @@
             }
         }
 
-
-        /** Removes a note from held notes, considering sustain pedal and UI update. */
-        function removeHeldNote(note, source = 'midi', channel = null) { // Default source now 'midi' as it's the main modified path
+        /**
+         * Removes a note from held notes, considering sustain pedal and UI update.
+         * @param {number} note - MIDI note number to remove.
+         * @param {string} source - Source of the note event ('ui' or 'midi').
+         * @param {number} [channel] - MIDI channel (for MIDI source).
+         */
+        function removeHeldNote(note, source = 'midi', channel = null) {
             if (source === 'midi') {
                 if (isSustainPedalPressed) {
-                    sustainedNotesMIDI.add(note); // Mark as sustained, don't remove yet
-                    return; // Early exit - note is sustained
+                    sustainedNotesMIDI.add(note);
+                    return;
                 }
                 heldNotesMIDI.delete(note);
                 const indexToRemove = rawHeldNotes.indexOf(note);
@@ -1120,10 +1121,10 @@
                         playedNoteOrder.splice(playedIndexToRemove, 1);
                     }
                 }
-                updateHeldNotesArrays(); // Update heldNotes array after raw notes change
+                updateHeldNotesArrays();
                 updatePianoUIForNote(note, 'midi');
                 if (isMPEEnabled && channel !== null) {
-                    mpeChannelNotes[channel] = null; // Clear note on this channel
+                    mpeChannelNotes[channel] = null;
                 }
             } else { // source === 'ui'
                 heldNotesUI.delete(note);
@@ -1135,7 +1136,7 @@
                         playedNoteOrder.splice(playedIndexToRemove, 1);
                     }
                 }
-                updateHeldNotesArrays(); // Update heldNotes array after raw notes change
+                updateHeldNotesArrays();
                 updatePianoUIForNote(note, 'ui');
             }
 
@@ -1175,18 +1176,24 @@
             }
         }
 
-        /** Updates the 'heldNotes' array from 'rawHeldNotes' based on octave count. */
+        /**
+         * Updates the 'heldNotes' array from 'rawHeldNotes' based on octave count.
+         * Also updates playback keyboard UI and mode note list.
+         */
         function updateHeldNotesArrays() {
             heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
-            updatePlaybackKeyboardUI(); // Update playback keyboard UI to reflect octave expansion
-            updateModeNoteList(); // Re-generate mode note list as held notes changed
+            updatePlaybackKeyboardUI();
+            updateModeNoteList();
         }
 
-        /** Updates the piano keyboard UI for a single note. */
+        /**
+         * Updates the piano keyboard UI for a single note.
+         * @param {number} note - MIDI note number.
+         * @param {string|null} source - Source of the hold ('ui', 'midi', or null to reset).
+         */
         function updatePianoUIForNote(note, source) {
             updatePianoKeyboardUI(note, source);
         }
-
 
         /**
          * Converts a MIDI note number to a note name (e.g., "C4").
@@ -1207,12 +1214,12 @@
          * @param {number} offset - Offset/rotation of the rhythm.
          * @param {string} beatEvent - Event character for beats.
          * @param {string} restEvent - Event character for rests.
-         * @param {boolean} isDisabled - If true, rhythm is disabled and all steps are beatEvent.
+         * @param {boolean} [isDisabled=false] - If true, rhythm is disabled and all steps are beatEvent.
          * @returns {string[]} - Array representing the Euclidean rhythm pattern.
          */
         function generateEuclideanRhythm(steps, beats, offset, beatEvent, restEvent, isDisabled = false) {
             if (isDisabled) {
-                return new Array(steps).fill(beatEvent); // If disabled, all beats
+                return new Array(steps).fill(beatEvent);
             }
             const rhythm = new Array(steps).fill(restEvent);
             let count = 0;
@@ -1230,7 +1237,7 @@
         }
 
         /**
-         * NEW: Generates an array of gate multipliers based on the rhythm array.
+         * Generates an array of gate multipliers based on the rhythm array.
          * @param {string[]} rhythmArray - Array of rhythm events ('B' for beat, 'R' for rest).
          * @returns {number[]} - Array of gate multipliers, 0 for rests, steps to next beat for beats.
          */
@@ -1244,13 +1251,12 @@
                         stepsToNextBeat++;
                         currentIndex = (currentIndex + 1) % rhythmArray.length;
                     }
-                    if (stepsToNextBeat > rhythmArray.length) stepsToNextBeat = 1; // Failsafe - should not happen in valid rhythms
+                    if (stepsToNextBeat > rhythmArray.length) stepsToNextBeat = 1; // Failsafe
                     multipliers[i] = stepsToNextBeat;
                 }
             }
             return multipliers;
         }
-
 
         /**
          * Updates both pattern and arpeggio rhythm displays based on slider values and enabled states.
@@ -1267,22 +1273,21 @@
             const patternBeats = parseInt(patternBeatsSlider.value);
             const patternOffset = parseInt(patternOffsetSlider.value);
             patternRhythm = generateEuclideanRhythm(patternSteps, patternBeats, patternOffset, PATTERN_NOTE, PATTERN_SKIP, isPatternDisabled);
-            displayRhythm(patternRhythm, 'patternDisplay', isPatternDisabled); // Pass disabled state to displayRhythm
+            displayRhythm(patternRhythm, 'patternDisplay', isPatternDisabled);
             document.getElementById('patternStepsValue').textContent = patternSteps;
             document.getElementById('patternBeatsValue').textContent = patternBeats;
             document.getElementById('patternOffsetValue').textContent = patternOffset;
-
 
             const rhythmSteps = parseInt(rhythmStepsSlider.value);
             const rhythmBeats = parseInt(rhythmBeatsSlider.value);
             const rhythmOffset = parseInt(rhythmOffsetSlider.value);
             rhythm = generateEuclideanRhythm(rhythmSteps, rhythmBeats, rhythmOffset, RHYTHM_BEAT, RHYTHM_REST, isRhythmDisabled);
-            displayRhythm(rhythm, 'rhythmDisplay', isRhythmDisabled); // Pass disabled state to displayRhythm
+            displayRhythm(rhythm, 'rhythmDisplay', isRhythmDisabled);
             document.getElementById('rhythmStepsValue').textContent = rhythmSteps;
             document.getElementById('rhythmBeatsValue').textContent = rhythmBeats;
             document.getElementById('rhythmOffsetValue').textContent = rhythmOffset;
 
-            rhythmGateMultipliers = generateRhythmGateMultipliers(rhythm); // NEW: Generate gate multipliers
+            rhythmGateMultipliers = generateRhythmGateMultipliers(rhythm);
 
             patternBeatsSlider.max = patternSteps;
             rhythmBeatsSlider.max = rhythmSteps;
@@ -1325,7 +1330,6 @@
             rhythmOffsetSlider.disabled = isRhythmDisabled;
         }
 
-
         /**
          * Displays a rhythm pattern in the UI.
          * @param {string[]} rhythmArray - Array of rhythm events.
@@ -1338,13 +1342,13 @@
             rhythmArray.forEach((event, index) => {
                 const stepElement = document.createElement('div');
                 stepElement.classList.add('rhythm-step');
-                stepElement.innerText = event; // Keep text for now, could be removed for pure graphical display
+                stepElement.innerText = event;
                 stepElement.id = `${displayElementId}-step-${index}`;
                 if (event === RHYTHM_BEAT) stepElement.classList.add('beat');
                 else if (event === RHYTHM_REST) stepElement.classList.add('rest');
                 else if (event === PATTERN_SKIP) stepElement.classList.add('skip');
                 else if (event === PATTERN_NOTE) stepElement.classList.add('note');
-                if (isDisabled) stepElement.classList.add('disabled-step'); // Apply disabled style
+                if (isDisabled) stepElement.classList.add('disabled-step');
                 displayElement.appendChild(stepElement);
             });
         }
@@ -1354,33 +1358,65 @@
          * These functions generate the ordered list of notes based on the selected arpeggio mode.
          */
 
-         /** @returns {number[]} - Notes transformed to an alternating sequence. */
-         function generateAlternatingVariant(notes) {
-             return [...notes, ...notes.reverse().slice(1, -1)];
-         }
+        /**
+         * Generates an alternating variant of a note list (e.g., for up/down modes).
+         * @param {number[]} notes - Base note list.
+         * @returns {number[]} - Notes transformed to an alternating sequence.
+         */
+        function generateAlternatingVariant(notes) {
+            return [...notes, ...notes.reverse().slice(1, -1)];
+        }
 
-         /** @returns {number[]} - Notes transformed to an inclusive alternating sequence. */
-         function generateInclusiveAlternatingVariant(notes) {
-         	return [...notes, ...notes.reverse()];
-         }
+        /**
+         * Generates an inclusive alternating variant of a note list (e.g., for up/down inclusive modes).
+         * @param {number[]} notes - Base note list.
+         * @returns {number[]} - Notes transformed to an inclusive alternating sequence.
+         */
+        function generateInclusiveAlternatingVariant(notes) {
+            return [...notes, ...notes.reverse()];
+        }
 
-        /** @returns {number[]} - Notes in ascending order. */
-        function generateUpNoteList(notes) { return [...notes].sort((a, b) => a - b); } // MODIFIED: Ensure sort for Up mode
+        /**
+         * Generates a note list in ascending order.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Notes in ascending order.
+         */
+        function generateUpNoteList(notes) {
+            return [...notes].sort((a, b) => a - b);
+        }
 
-        /** @returns {number[]} - Notes in descending order. */
-        function generateDownNoteList(notes) { return [...notes].sort((a, b) => b - a); } // MODIFIED: Ensure sort for Down mode
+        /**
+         * Generates a note list in descending order.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Notes in descending order.
+         */
+        function generateDownNoteList(notes) {
+            return [...notes].sort((a, b) => b - a);
+        }
 
-        /** @returns {number[]} - Notes in up-down sequence, excluding крайние notes in descent. */
+        /**
+         * Generates an up-down note list, excluding крайние notes in descent.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Notes in up-down sequence, excluding крайние notes in descent.
+         */
         function generateUpDownNoteList(notes) {
-            return generateAlternatingVariant(generateUpNoteList(notes)); // MODIFIED: Use generateUpNoteList for sorted input
+            return generateAlternatingVariant(generateUpNoteList(notes));
         }
 
-        /** @returns {number[]} - Notes in up-down sequence, including крайние notes in descent. */
+        /**
+         * Generates an up-down inclusive note list, including крайние notes in descent.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Notes in up-down sequence, including крайние notes in descent.
+         */
         function generateUpDownInclusiveNoteList(notes) {
-            return generateInclusiveAlternatingVariant(generateUpNoteList(notes)); // MODIFIED: Use generateUpNoteList for sorted input
+            return generateInclusiveAlternatingVariant(generateUpNoteList(notes));
         }
 
-        /** @returns {number[]} - Notes converging from outer to inner. */
+        /**
+         * Generates a note list converging from outer to inner notes.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Notes converging from outer to inner.
+         */
         function generateConvergeNoteList(notes) {
             if (notes.length <= 1) return [...notes];
             const convergeList = [];
@@ -1397,9 +1433,13 @@
             return convergeList;
         }
 
-/** @returns {number[]} - Notes diverging from inner to outer. */
+        /**
+         * Generates a note list diverging from inner to outer notes.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Notes diverging from inner to outer.
+         */
         function generateDivergeNoteList(notes) {
-             if (notes.length <= 1) return [...notes];
+            if (notes.length <= 1) return [...notes];
             const divergeList = [];
             let start = Math.floor((notes.length - 1) / 2);
             let end = Math.ceil((notes.length - 1) / 2);
@@ -1415,6 +1455,8 @@
         }
 
         /**
+         * Generates a converge-diverge note list, excluding repeated end notes.
+         * @param {number[]} notes - Input notes.
          * @returns {number[]} - Notes in converge-diverge sequence, excluding repeated end notes.
          */
         function generateConvergeDivergeNoteList(notes) {
@@ -1422,26 +1464,58 @@
         }
 
         /**
+         * Generates a converge-diverge inclusive note list, including repeated end notes.
+         * @param {number[]} notes - Input notes.
          * @returns {number[]} - Notes in converge-diverge sequence, including repeated end notes.
          */
         function generateConvergeDivergeInclusiveNoteList(notes) {
             return generateInclusiveAlternatingVariant(generateConvergeNoteList(notes));
         }
 
-        /** @returns {number[]} - Notes in the order they were played/held. */
-        function generatePlayedNoteList(notes) { return [...notes]; } // NEW: Generate from heldNotes - which are now play-ordered and octave-expanded
+        /**
+         * Generates a note list in the order notes were played/held.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Notes in the order they were played/held.
+         */
+        function generatePlayedNoteList(notes) {
+            return [...notes];
+        }
 
-        /** @returns {number[]} - Empty array, random note selection happens in arpStep. */
-        function generateRandomNoteList(notes) { return []; }
+        /**
+         * Generates an empty note list for random mode (note selection happens in arpStep).
+         * @param {number[]} notes - Input notes (not used in random mode list generation).
+         * @returns {number[]} - Empty array.
+         */
+        function generateRandomNoteList(notes) {
+            return [];
+        }
 
-        /** @returns {number[]} - Notes shuffled randomly each time the list is generated. */
-        function generateShuffledNoteList(notes) { return [...notes].sort(() => Math.random() - 0.5); }
+        /**
+         * Generates a shuffled note list, shuffling notes randomly each time.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Notes shuffled randomly.
+         */
+        function generateShuffledNoteList(notes) {
+            return [...notes].sort(() => Math.random() - 0.5);
+        }
 
-        /** @returns {number[]} - Returns the stable shuffled note order. */
-        function generateStableShuffledNoteList(notes) { return stableShuffledOrder; }
+        /**
+         * Generates a stable shuffled note list, maintaining the same shuffled order.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Returns the stable shuffled note order.
+         */
+        function generateStableShuffledNoteList(notes) {
+            return stableShuffledOrder;
+        }
 
-        /** @returns {number[]} - Returns all held notes as a chord. */
-        function generateChordNoteList(notes) { return [...notes]; }
+        /**
+         * Generates a chord note list, including all held notes as a chord.
+         * @param {number[]} notes - Input notes.
+         * @returns {number[]} - Returns all held notes as a chord.
+         */
+        function generateChordNoteList(notes) {
+            return [...notes];
+        }
 
         /**
          * Generates a list of chord combinations from held notes for ChordN mode.
@@ -1455,6 +1529,7 @@
             n = Math.min(n, notes.length);
 
             const combinations = [];
+
             function combine(currentCombination, startIndex) {
                 if (currentCombination.length === n) {
                     combinations.push([...currentCombination]);
@@ -1468,43 +1543,55 @@
             }
             combine([], 0);
 
-            // Order combinations based on orderingMode
             let orderedCombinations = combinations;
             switch (orderingMode) {
-                case 'up': // Already in ascending order due to combine function
+                case 'up':
                     break;
                 case 'down':
                     orderedCombinations = [...combinations].reverse();
                     break;
                 case 'upDown':
-                    orderedCombinations = generateAlternatingVariantCombinations(combinations); // Implement this function (see below)
+                    orderedCombinations = generateAlternatingVariantCombinations(combinations);
                     break;
                 case 'upDownInclusive':
-                    orderedCombinations = generateInclusiveAlternatingVariantCombinations(combinations); // Implement this function (see below)
+                    orderedCombinations = generateInclusiveAlternatingVariantCombinations(combinations);
                     break;
                 case 'converge':
-                    orderedCombinations = generateConvergeCombinations(combinations); // Implement this function (see below)
+                    orderedCombinations = generateConvergeCombinations(combinations);
                     break;
                 case 'diverge':
-                    orderedCombinations = generateDivergeCombinations(combinations); // Implement this function (see below)
+                    orderedCombinations = generateDivergeCombinations(combinations);
                     break;
-                // Add other ordering modes as needed (convergeDiverge, etc.)
-                default: // Default to 'up' if orderingMode is not recognized
+                default:
                     break;
             }
 
             return orderedCombinations;
         }
 
-        // Helper functions to order combinations (similar to your existing note list generators, but for arrays of notes)
+        /**
+         * Generates an alternating variant of chord combinations (e.g., for up/down ChordN ordering).
+         * @param {number[][]} combinations - Base chord combinations list.
+         * @returns {number[][]} - Chord combinations transformed to an alternating sequence.
+         */
         function generateAlternatingVariantCombinations(combinations) {
             return [...combinations, ...[...combinations].reverse().slice(1, -1)];
         }
 
+        /**
+         * Generates an inclusive alternating variant of chord combinations (e.g., for up/down inclusive ChordN ordering).
+         * @param {number[][]} combinations - Base chord combinations list.
+         * @returns {number[][]} - Chord combinations transformed to an inclusive alternating sequence.
+         */
         function generateInclusiveAlternatingVariantCombinations(combinations) {
             return [...combinations, ...[...combinations].reverse()];
         }
 
+        /**
+         * Generates chord combinations converging from outer to inner.
+         * @param {number[][]} combinations - Base chord combinations list.
+         * @returns {number[][]} - Chord combinations converging from outer to inner.
+         */
         function generateConvergeCombinations(combinations) {
             if (combinations.length <= 1) return [...combinations];
             const convergeList = [];
@@ -1521,6 +1608,11 @@
             return convergeList;
         }
 
+        /**
+         * Generates chord combinations diverging from inner to outer.
+         * @param {number[][]} combinations - Base chord combinations list.
+         * @returns {number[][]} - Chord combinations diverging from inner to outer.
+         */
         function generateDivergeCombinations(combinations) {
             if (combinations.length <= 1) return [...combinations];
             const divergeList = [];
@@ -1537,7 +1629,6 @@
             return divergeList;
         }
 
-
         /**
          * Updates the currentModeNoteList based on the selected arpeggio mode and held notes.
          * @returns {number[]} - The newly generated mode note list.
@@ -1545,26 +1636,58 @@
         function updateModeNoteList() {
             let notesToArp = heldNotes.length > 0 ? heldNotes : [];
             switch (arpMode) {
-                case 'up': currentModeNoteList = generateUpNoteList(notesToArp); break;
-                case 'down': currentModeNoteList = generateDownNoteList(notesToArp); break;
-                case 'upDown': currentModeNoteList = generateUpDownNoteList(notesToArp); break;
-                case 'upDownInclusive': currentModeNoteList = generateUpDownInclusiveNoteList(notesToArp); break;
-                case 'converge': currentModeNoteList = generateConvergeNoteList(notesToArp); break;
-                case 'diverge': currentModeNoteList = generateDivergeNoteList(notesToArp); break;
-                case 'convergeDiverge': currentModeNoteList = generateConvergeDivergeNoteList(notesToArp); break;
-                case 'convergeDivergeInclusive': currentModeNoteList = generateConvergeDivergeInclusiveNoteList(notesToArp); break;
-                case 'played': currentModeNoteList = generatePlayedNoteList(heldNotes); break; // MODIFIED: Use heldNotes directly as they are now octave-expanded and deduped correctly
-                case 'random': currentModeNoteList = generateRandomNoteList(notesToArp); break;
-                case 'shuffled': currentModeNoteList = generateShuffledNoteList(notesToArp); break;
-                case 'stableShuffled': currentModeNoteList = generateStableShuffledNoteList(notesToArp); break;
-                case 'chord': currentModeNoteList = generateChordNoteList(notesToArp); break;
-                case 'chordN':
-                    const chordNOrderingMode = document.getElementById('chordNOrdering').value; // Get selected ordering mode
-                    currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue, chordNOrderingMode); // Pass orderingMode
+                case 'up':
+                    currentModeNoteList = generateUpNoteList(notesToArp);
                     break;
-                case 'walk': currentModeNoteList = generateUpNoteList(notesToArp); break; // Walk mode uses 'up' note list
-                case 'normalWalk': currentModeNoteList = generateUpNoteList(notesToArp); break; // Normal Walk mode uses 'up' note list
-                default: currentModeNoteList = generateUpNoteList(notesToArp); break; // 'up' is default
+                case 'down':
+                    currentModeNoteList = generateDownNoteList(notesToArp);
+                    break;
+                case 'upDown':
+                    currentModeNoteList = generateUpDownNoteList(notesToArp);
+                    break;
+                case 'upDownInclusive':
+                    currentModeNoteList = generateUpDownInclusiveNoteList(notesToArp);
+                    break;
+                case 'converge':
+                    currentModeNoteList = generateConvergeNoteList(notesToArp);
+                    break;
+                case 'diverge':
+                    currentModeNoteList = generateDivergeNoteList(notesToArp);
+                    break;
+                case 'convergeDiverge':
+                    currentModeNoteList = generateConvergeDivergeNoteList(notesToArp);
+                    break;
+                case 'convergeDivergeInclusive':
+                    currentModeNoteList = generateConvergeDivergeInclusiveNoteList(notesToArp);
+                    break;
+                case 'played':
+                    currentModeNoteList = generatePlayedNoteList(heldNotes);
+                    break;
+                case 'random':
+                    currentModeNoteList = generateRandomNoteList(notesToArp);
+                    break;
+                case 'shuffled':
+                    currentModeNoteList = generateShuffledNoteList(notesToArp);
+                    break;
+                case 'stableShuffled':
+                    currentModeNoteList = generateStableShuffledNoteList(notesToArp);
+                    break;
+                case 'chord':
+                    currentModeNoteList = generateChordNoteList(notesToArp);
+                    break;
+                case 'chordN':
+                    const chordNOrderingMode = document.getElementById('chordNOrdering').value;
+                    currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue, chordNOrderingMode);
+                    break;
+                case 'walk':
+                    currentModeNoteList = generateUpNoteList(notesToArp);
+                    break;
+                case 'normalWalk':
+                    currentModeNoteList = generateUpNoteList(notesToArp);
+                    break;
+                default:
+                    currentModeNoteList = generateUpNoteList(notesToArp);
+                    break;
             }
             return currentModeNoteList;
         }
@@ -1579,17 +1702,16 @@
          * @returns {number} - The adjusted arpeggio note index in the new note list.
          */
         function findClosestNoteIndex(previousNote, oldNoteList, newNoteList, previousIndex) {
-            if (newNoteList.length === 0) return 0; // Reset if new list is empty
+            if (newNoteList.length === 0) return 0;
 
             let foundIndex = -1;
             let minDistance = Infinity;
             let currentNoteFound = false;
 
-            // -- First, try to find the *current* note --
             for (let i = 0; i < newNoteList.length; i++) {
                 if (newNoteList[i] === previousNote) {
                     currentNoteFound = true;
-                    const distance = Math.min(Math.abs(i - previousIndex), newNoteList.length - Math.abs(i - previousIndex)); // Circular distance
+                    const distance = Math.min(Math.abs(i - previousIndex), newNoteList.length - Math.abs(i - previousIndex));
                     if (distance < minDistance) {
                         minDistance = distance;
                         foundIndex = i;
@@ -1598,19 +1720,18 @@
             }
 
             if (currentNoteFound) {
-                return foundIndex; // Return index of current note if found
+                return foundIndex;
             }
 
-            // -- Fallback: If current note not found, search for the *next* note --
             let nextNote = oldNoteList[(previousIndex + 1) % oldNoteList.length];
-            if (oldNoteList.length === 0) nextNote = -1; // No next note if old list was empty.
+            if (oldNoteList.length === 0) nextNote = -1;
 
             if (nextNote !== -1) {
-                minDistance = Infinity; // Reset minDistance for next note search
-                foundIndex = -1; // Reset foundIndex for next note search
+                minDistance = Infinity;
+                foundIndex = -1;
                 for (let i = 0; i < newNoteList.length; i++) {
                     if (newNoteList[i] === nextNote) {
-                        const distance = Math.min(Math.abs(i - previousIndex), newNoteList.length - Math.abs(i - previousIndex)); // Circular distance
+                        const distance = Math.min(Math.abs(i - previousIndex), newNoteList.length - Math.abs(i - previousIndex));
                         if (distance < minDistance) {
                             minDistance = distance;
                             foundIndex = i;
@@ -1618,37 +1739,45 @@
                     }
                 }
                 if (foundIndex !== -1) {
-                    return foundIndex; // Return index of next note if found
+                    return foundIndex;
                 }
             }
             if (previousIndex) {
                 return (previousIndex % oldNoteList.length) % newNoteList.length;
-             } else {
-                 return 0; // Default to 0 if neither current nor next note is found
-             }
+            } else {
+                return 0;
+            }
         }
 
-
-        /** Advances the arpeggio rhythm index by a specified number of steps (default 1). */
+        /**
+         * Advances the arpeggio rhythm index by a specified number of steps (default 1).
+         * @param {number} [steps=1] - Number of steps to advance.
+         */
         function advanceRhythmIndex(steps = 1) {
             currentRhythmIndex = (currentRhythmIndex + steps) % rhythm.length;
         }
 
-        /** Resets the arpeggio rhythm index to 0. */
+        /**
+         * Resets the arpeggio rhythm index to 0.
+         */
         function resetRhythmIndex() {
             currentRhythmIndex = 0;
         }
 
-        /** Advances the pattern index by a specified number of steps (default 1). */
+        /**
+         * Advances the pattern index by a specified number of steps (default 1).
+         * @param {number} [steps=1] - Number of steps to advance.
+         */
         function advancePatternIndex(steps = 1) {
             currentPatternIndex = (currentPatternIndex + steps) % patternRhythm.length;
         }
 
-        /** Resets the pattern index to 0. */
+        /**
+         * Resets the pattern index to 0.
+         */
         function resetPatternIndex() {
             currentPatternIndex = 0;
         }
-
 
         /**
          * Calculates the number of MIDI ticks per arpeggiator step based on the clock division.
@@ -1658,19 +1787,42 @@
          */
         function calculateClockDivisionCounterMax(division) {
             switch (division) {
-                case '1/1': return 96;
-                case '1/2': return 48;
-                case '1/4': return 24;
-                case '1/8': return 12;
-                case '1/16': return 6;
-                case '1/32': return 3;
-                case '1/2T': return 32;
-                case '1/4T': return 16;
-                case '1/8T': return 8;
-                case '1/16T': return 4;
-                case '1/32T': return 2;
-                default: return 24; // Default to 1/4
+                case '1/1':
+                    return 96;
+                case '1/2':
+                    return 48;
+                case '1/4':
+                    return 24;
+                case '1/8':
+                    return 12;
+                case '1/16':
+                    return 6;
+                case '1/32':
+                    return 3;
+                case '1/2T':
+                    return 32;
+                case '1/4T':
+                    return 16;
+                case '1/8T':
+                    return 8;
+                case '1/16T':
+                    return 4;
+                case '1/32T':
+                    return 2;
+                default:
+                    return 24; // Default to 1/4
             }
+        }
+
+        /**
+         * Calculates the gate duration in milliseconds based on clock division, gate length percentage, and optional gate multiplier.
+         * @param {number} clockDivisionDurationMs - Duration of one clock division in milliseconds.
+         * @param {number} gateLengthPercentage - Gate length as a percentage of clock division.
+         * @param {number} [gateMultiplier=1] - Optional multiplier for gate length (e.g., for gate flex).
+         * @returns {number} - Gate duration in milliseconds.
+         */
+        function calculateGateDuration(clockDivisionDurationMs, gateLengthPercentage, gateMultiplier = 1) {
+            return (clockDivisionDurationMs * gateLengthPercentage * gateMultiplier) / 100;
         }
 
         /**
@@ -1683,11 +1835,10 @@
             internalClockInterval = setInterval(tick, intervalMs);
             clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
             tickCounter = -1;
-            clockDivisionDurationMs = intervalMs * clockDivisionCounterMax; // Calculate duration of one clock division
-             updateTempoDisplay(); // Update tempo display to reflect internal BPM
+            clockDivisionDurationMs = intervalMs * clockDivisionCounterMax;
+            updateTempoDisplay();
             console.log(`Internal clock setup: BPM=${bpm}, Division=${clockDivision}, Interval=${intervalMs.toFixed(2)}ms, Ticks per step=${clockDivisionCounterMax}, Clock Division Duration=${clockDivisionDurationMs.toFixed(2)}ms`);
         }
-
 
         /**
          * Starts the arpeggiator. Initializes rhythms, note lists, and clock based on tempo source.
@@ -1699,28 +1850,27 @@
             let notesToArp = heldNotes.length > 0 ? heldNotes : [];
             updateModeNoteList();
 
-            // Reset stable shuffle order only if held notes have changed
             if (!arraysAreEqual(notesToArp, lastNotesToArp)) {
                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                 lastNotesToArp = [...notesToArp];
                 stableShuffleIndex = 0;
             }
 
-            shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5); // Reset shuffled order
+            shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
 
             arpRunning = true;
             startButton.disabled = true;
             stopButton.disabled = false;
-            startButton.classList.add('playing'); // Indicate 'Start' button is active (like it's toggled 'on')
-            stopButton.classList.remove('playing'); // Ensure 'Stop' button doesn't show 'playing' state
+            startButton.classList.add('playing');
+            stopButton.classList.remove('playing');
             updateRhythmDisplays();
             resetRhythmIndex();
             resetPatternIndex();
             currentNoteIndex = 0;
 
             if ((arpMode === 'walk' || arpMode === 'normalWalk') && currentModeNoteList.length > 0) {
-	            currentNoteIndex = Math.floor(currentModeNoteList.length / 2); // Start at middle index
-		    }
+                currentNoteIndex = Math.floor(currentModeNoteList.length / 2);
+            }
 
             playbackDisplayElem.innerHTML = '';
 
@@ -1729,7 +1879,7 @@
             } else {
                 clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
                 tickCounter = -1;
-                updateTempoDisplay('External MIDI Clock'); // Indicate external clock is active
+                updateTempoDisplay('External MIDI Clock');
                 console.log(`External clock mode active, division=${clockDivision}, ticksPerStep=${clockDivisionCounterMax}`);
             }
         }
@@ -1746,8 +1896,8 @@
             }
             startButton.disabled = false;
             stopButton.disabled = true;
-            stopButton.classList.add('playing'); // Indicate 'Stop' button is active (like it's toggled 'on')
-            startButton.classList.remove('playing'); // Ensure 'Start' button doesn't show 'playing' state
+            stopButton.classList.add('playing');
+            startButton.classList.remove('playing');
             allNotesOff();
             unhighlightCurrentStep();
             unhighlightPlaybackPianoKeys();
@@ -1764,15 +1914,16 @@
             }
         }
 
-        /** Handles MIDI clock tick messages (0xF8). */
+        /**
+         * Handles MIDI clock tick messages (0xF8).
+         */
         function handleMIDITick() {
             if (tempoSource === 'external') {
                 const now = performance.now();
-                tickHistory[tickIndex % tickHistorySize] = now; // Store current tick time
+                tickHistory[tickIndex % tickHistorySize] = now;
                 tickIndex++;
 
                 if (tickIndex >= tickHistorySize) {
-                    // Calculate average tick interval over the last 'tickHistorySize' ticks
                     let intervalSum = 0;
                     for (let i = 1; i < tickHistorySize; i++) {
                         intervalSum += tickHistory[i] - tickHistory[i - 1];
@@ -1780,16 +1931,16 @@
                     const averageInterval = intervalSum / (tickHistorySize - 1);
                     if (averageInterval > 0) {
                         clockDivisionDurationMs = averageInterval * clockDivisionCounterMax;
-                        bpm = Math.round(60000 / (averageInterval * 24)); // Recalculate BPM
-                        updateTempoDisplay(); // Update tempo display with external BPM
+                        bpm = Math.round(60000 / (averageInterval * 24));
+                        updateTempoDisplay();
                     }
                 } else if (tickIndex > 1) {
-                     clockDivisionDurationMs = (now - lastTickTime) * clockDivisionCounterMax;
-                     bpm = Math.round(60000 / ((now - lastTickTime) * 24)); // Recalculate BPM
-                     updateTempoDisplay(); // Update tempo display with external BPM
+                    clockDivisionDurationMs = (now - lastTickTime) * clockDivisionCounterMax;
+                    bpm = Math.round(60000 / ((now - lastTickTime) * 24));
+                    updateTempoDisplay();
                 }
-                 lastTickTime = now;
-                tick(); // Proceed with arpeggiator step
+                lastTickTime = now;
+                tick();
             }
         }
 
@@ -1803,9 +1954,8 @@
             const commandLoBits = command & 0x0F;
             const byte1 = message.data.length > 1 ? message.data[1] : 0;
             const byte2 = message.data.length > 2 ? message.data[2] : 0;
-            const byte3 = message.data.length > 3 ? message.data[2] : 0;
 
-            if (command === 0xF8) { // MIDI Clock Tick - 0xF8 (248 in decimal)
+            if (command === 0xF8) { // MIDI Clock Tick
                 handleMIDITick();
                 return;
             }
@@ -1837,50 +1987,49 @@
                     const channel = commandLoBits;
                     const note = byte1;
                     noteOff(note, 'midi', channel);
-                } else if (commandHiBits === 0xA) { // Polyphonic Aftertouch (0xA0-0xAF)
+                } else if (commandHiBits === 0xA) { // Polyphonic Aftertouch
                     const note = byte1;
                     const pressure = byte2;
                     if (notePressures.has(note)) {
-                        notePressures.set(note, pressure); // velocity byte is pressure in poly aftertouch
+                        notePressures.set(note, pressure);
                     }
                 } else if (commandHiBits == 0xB) { // MIDI CC
                     const channel = commandLoBits;
                     const ccNumber = byte1;
                     const ccValue = byte2;
 
-                    if (ccNumber === 64) { // Sustain Pedal (CC#64)
+                    if (ccNumber === 64) { // Sustain Pedal
                         if (ccValue >= 64) { // Pedal Down
                             isSustainPedalPressed = true;
-                        } else {              // Pedal Up
+                        } else { // Pedal Up
                             isSustainPedalPressed = false;
-                            // Process sustained notes now that pedal is released
-                            let notesToRelease = [...sustainedNotesMIDI]; // Copy to avoid modifying while iterating
+                            let notesToRelease = [...sustainedNotesMIDI];
                             sustainedNotesMIDI.clear();
                             notesToRelease.forEach(note => {
-                                removeHeldNote(note, 'midi'); // Now actually remove the notes
+                                removeHeldNote(note, 'midi');
                             });
                         }
-                        return; // Important: Exit function after handling sustain
+                        return;
                     }
 
                     const channelNote = mpeChannelNotes[channel];
                     if (isMPEEnabled && ccNumber == 74) {
-	                    if (channelNote !== null && noteMPEYAxis.has(channelNote)) {
-	                        noteMPEYAxis.set(channelNote, ccValue);
-	                    }
+                        if (channelNote !== null && noteMPEYAxis.has(channelNote)) {
+                            noteMPEYAxis.set(channelNote, ccValue);
+                        }
                     }
-                } else if (commandHiBits === 0xD) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
+                } else if (commandHiBits === 0xD) { // Channel Pressure
                     const channel = commandLoBits;
                     const pressure = byte1;
                     if (isMPEEnabled) {
                         const channelNote = mpeChannelNotes[channel];
                         if (channelNote !== null && notePressures.has(channelNote)) {
-                            notePressures.set(channelNote, pressure); // Note byte is pressure in channel pressure
+                            notePressures.set(channelNote, pressure);
                         }
-                    } else { // Non-MPE Channel Pressure - Apply to all held MIDI notes (original behavior)
+                    } else { // Non-MPE Channel Pressure - Apply to all held MIDI notes
                         heldNotesMIDI.forEach(heldNote => {
                             if (notePressures.has(heldNote)) {
-                                notePressures.set(heldNote, pressure); // note byte is pressure in channel pressure
+                                notePressures.set(heldNote, pressure);
                             }
                         });
                     }
@@ -1921,69 +2070,67 @@
                 currentModeNoteList = generateStableShuffledNoteList(notesToArp);
             }
 
-
             if (notesToArp.length === 0 && arpSyncMode !== 'free') {
                 stopArpeggiator();
                 return;
             } else if (notesToArp.length === 0 && arpSyncMode === 'free') {
-                return; // Silent advance already handled above
+                return;
             }
 
             let noteForStep = '';
             let stepType = null;
 
             const currentRhythmEvent = rhythm[currentRhythmIndex];
-            const patternEventActive = !isPatternDisabled; // Check if pattern is enabled
-            const rhythmEventActive = !isRhythmDisabled;   // Check if rhythm is enabled
+            const patternEventActive = !isPatternDisabled;
+            const rhythmEventActive = !isRhythmDisabled;
 
-            if (rhythmEventActive && currentRhythmEvent === RHYTHM_BEAT || !rhythmEventActive) { // Beat in Rhythm (or rhythm disabled)
+            if (rhythmEventActive && currentRhythmEvent === RHYTHM_BEAT || !rhythmEventActive) {
                 let patternEventProcessed = false;
                 while (!patternEventProcessed) {
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
-                    const patternStepType = patternEventActive ? currentPatternEvent : PATTERN_NOTE; // Use pattern event if pattern enabled, else force 'Note'
+                    const patternStepType = patternEventActive ? currentPatternEvent : PATTERN_NOTE;
 
-                    if (patternStepType === PATTERN_NOTE) { // Note in Pattern
-                        if (arpMode === 'chord' || arpMode === 'chordN') { // Chord Mode Logic
+                    if (patternStepType === PATTERN_NOTE) {
+                        if (arpMode === 'chord' || arpMode === 'chordN') {
                             if (currentModeNoteList.length > 0) {
                                 let chordToPlay = [];
                                 if (arpMode === 'chordN') {
                                     if (currentModeNoteList) {
                                         chordToPlay = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
-                                        highlightPianoKeys(chordToPlay); // Highlight only current chord notes for ChordN
+                                        highlightPianoKeys(chordToPlay);
                                         highlightPlaybackPianoKeys(chordToPlay);
                                     }
                                 } else { // arpMode === 'chord'
                                     chordToPlay = currentModeNoteList;
-                                    highlightPianoKeys(chordToPlay); // Highlight all chord notes for Chord
+                                    highlightPianoKeys(chordToPlay);
                                     highlightPlaybackPianoKeys(chordToPlay);
                                 }
-                                const selectedSubArpMode = document.getElementById('subArpMode').value; // Get selected sub arp mode
+                                const selectedSubArpMode = document.getElementById('subArpMode').value;
                                 playNotes(chordToPlay, selectedSubArpMode);
                                 advancePatternIndex();
                                 stepType = 'note';
-                                highlightCurrentStep('note', null, true); // Indicate chord with highlightAllKeys=true
+                                highlightCurrentStep('note', null, true);
                                 patternEventProcessed = true;
                             } else {
                                 stepType = 'rest';
                                 patternEventProcessed = true;
                                 highlightCurrentStep('rest', null);
                             }
-                        }
-                        else if (currentModeNoteList.length > 0 && arpMode !== 'random') { // Regular Arp Modes
+                        } else if (currentModeNoteList.length > 0 && arpMode !== 'random') {
                             noteForStep = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
                         } else if (arpMode === 'random' && notesToArp.length > 0) {
                             noteForStep = notesToArp[Math.floor(Math.random() * notesToArp.length)];
-                        } else if (arpMode === 'walk') { // Walk mode note selection
+                        } else if (arpMode === 'walk') {
                             noteForStep = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
-                        } else if (arpMode === 'normalWalk') { // Normal Walk mode note selection
+                        } else if (arpMode === 'normalWalk') {
                             noteForStep = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
                         }
 
-                        if (arpMode !== 'chord' && arpMode !== 'chordN') { // Play single note for non-chord modes
+                        if (arpMode !== 'chord' && arpMode !== 'chordN') {
                             if (noteForStep !== '') {
                                 playNotes(noteForStep);
                                 if (arpMode !== 'walk' && arpMode !== 'normalWalk') {
-                                    currentNoteIndex++; // Increment index for non-walk modes
+                                    currentNoteIndex++;
                                 }
                                 if (arpMode === 'stableShuffled') stableShuffleIndex++;
                                 advancePatternIndex();
@@ -1991,7 +2138,7 @@
                                 highlightCurrentStep('note', noteForStep);
                                 highlightPlaybackPianoKeys(noteForStep);
                                 patternEventProcessed = true;
-                            }  else {
+                            } else {
                                 stepType = 'rest';
                                 patternEventProcessed = true;
                                 advancePatternIndex();
@@ -2004,15 +2151,15 @@
                             highlightCurrentStep('rest', null);
                         }
                         if (arpMode === 'chordN') {
-                            currentNoteIndex++; // Advance chord index for chordN mode
+                            currentNoteIndex++;
                         }
 
 
-                    } else if (patternStepType === PATTERN_SKIP) { // Skip in Pattern
+                    } else if (patternStepType === PATTERN_SKIP) {
                         advancePatternIndex();
                         currentNoteIndex++;
                         if (arpMode === 'stableShuffled') stableShuffleIndex++;
-                    } else { // Error case
+                    } else {
                         stepType = 'error';
                         patternEventProcessed = true;
                         highlightCurrentStep('error', null);
@@ -2020,7 +2167,7 @@
                     }
                     if (patternEventProcessed) break;
                 }
-            } else if (rhythmEventActive && currentRhythmEvent === RHYTHM_REST) { // Rest in Rhythm
+            } else if (rhythmEventActive && currentRhythmEvent === RHYTHM_REST) {
                 stepType = 'rest';
                 highlightCurrentStep('rest', null);
             } else {
@@ -2032,13 +2179,12 @@
                 updatePlaybackDisplay(stepType, (stepType === 'note' && arpMode !== 'chord' && arpMode !== 'chordN') ? noteForStep : null, (arpMode === 'chord' || arpMode === 'chordN'));
             }
 
-            // --- WALK MODE INDEX ADVANCEMENT ---
             if (arpMode === 'walk') {
-                advanceWalkIndex(); // Advance index for walk mode
+                advanceWalkIndex();
             } else if (arpMode === 'normalWalk') {
-                advanceNormalWalkIndex(); // Advance index for normal walk mode
+                advanceNormalWalkIndex();
             } else {
-                 advanceRhythmIndex(); // Advance rhythm index for other modes
+                advanceRhythmIndex();
             }
         }
 
@@ -2052,33 +2198,29 @@
             return Math.round(velocity);
         }
 
-
         /**
-         * Sends a MIDI note on and note off message. Handles MPE/non-MPE output.
+         * Sends a MIDI note on and note off message. Handles MPE/non-MPE output and gate duration.
          * @param {number} note - MIDI note number.
          * @param {number} velocity - MIDI velocity (0-127).
          * @param {number} outputChannel - MIDI output channel (0-15).
          */
         function sendMidiNote(note, velocity, outputChannel) {
             if (midiOutput) {
-                let gateDurationMs = (clockDivisionDurationMs * gateLengthPercentage) / 100; // Default gate length
-                if (isGateFlexEnabled) { // NEW: Gate Flex Logic
-                    const gateMultiplier = rhythmGateMultipliers[currentRhythmIndex];
-                    if (gateMultiplier > 0) { // Only extend gate if multiplier > 0 (not a rest step)
-                        gateDurationMs = (clockDivisionDurationMs * gateLengthPercentage * gateMultiplier) / 100; // Extended gate
-                    }
-                }
+                const gateDurationMs = calculateGateDuration(clockDivisionDurationMs, gateLengthPercentage, (isGateFlexEnabled ? rhythmGateMultipliers[currentRhythmIndex] : 1));
 
                 if (mpeOutputMode === 'mpe') {
-                    midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, velocity]); // Pitch Bend, Note On with velocity
-                    setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, gateDurationMs); // Note Off with calculated delay
+                    midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, velocity]);
+                    setTimeout(() => {
+                        midiOutput.send([0x80 + outputChannel, note, 0]);
+                    }, gateDurationMs);
                 } else {
-                    midiOutput.send([0x90 + outputChannel, note, velocity]); // Note On with velocity
-                    setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, gateDurationMs); // Note Off with calculated delay
+                    midiOutput.send([0x90 + outputChannel, note, velocity]);
+                    setTimeout(() => {
+                        midiOutput.send([0x80 + outputChannel, note, 0]);
+                    }, gateDurationMs);
                 }
             }
         }
-
 
         /**
          * Plays a single note or an array of notes, with optional sub-arpeggiation for chords and sub-arp modes.
@@ -2088,38 +2230,35 @@
         function playNotes(notes, subArpMode = 'up') {
             if (midiOutput) {
                 let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
-                const notesArray = Array.isArray(notes) ? notes : [notes]; // Ensure notes is always an array
+                const notesArray = Array.isArray(notes) ? notes : [notes];
 
                 if (notesArray.length > 1 && subArpScalePercentage > 0 && (arpMode === 'chord' || arpMode === 'chordN')) {
                     // Sub-Arpeggiation Logic for Chords
                     const subArpDuration = (clockDivisionDurationMs * subArpScalePercentage) / 100;
                     const noteSpacing = subArpDuration / notesArray.length;
 
-                    let subArpedChordNotes = [...notesArray]; // Copy to avoid modifying original
+                    let subArpedChordNotes = [...notesArray];
 
-                    // Apply sub-arp ordering mode
                     switch (subArpMode) {
-                        case 'up': // Default - already in ascending order if notes are sorted initially, or keep original order
-                            subArpedChordNotes.sort((a, b) => a - b); // Ensure ascending order for 'up'
+                        case 'up':
+                            subArpedChordNotes.sort((a, b) => a - b);
                             break;
                         case 'down':
-                            subArpedChordNotes.sort((a, b) => b - a); // Descending order
+                            subArpedChordNotes.sort((a, b) => b - a);
                             break;
                         case 'random':
-                            subArpedChordNotes.sort(() => Math.random() - 0.5); // Random order
+                            subArpedChordNotes.sort(() => Math.random() - 0.5);
                             break;
                         case 'converge':
-                            subArpedChordNotes = generateConvergeNoteList(subArpedChordNotes.sort((a, b) => a - b)); // Converge order (sort first for consistent behavior)
+                            subArpedChordNotes = generateConvergeNoteList(subArpedChordNotes.sort((a, b) => a - b));
                             break;
                         case 'diverge':
-                            subArpedChordNotes = generateDivergeNoteList(subArpedChordNotes.sort((a, b) => a - b)); // Diverge order (sort first)
+                            subArpedChordNotes = generateDivergeNoteList(subArpedChordNotes.sort((a, b) => a - b));
                             break;
-                        // Add more sub-arp modes (upDown, etc.) as needed
-                        default: // Default to 'up' if subArpMode is not recognized
+                        default:
                             subArpedChordNotes.sort((a, b) => a - b);
                             break;
                     }
-
 
                     subArpedChordNotes.forEach((expandedNote, index) => {
                         const originalNote = octaveExpandedNoteMap.get(expandedNote);
@@ -2127,7 +2266,7 @@
                         let velocity = calculateVelocity(pressure);
                         const delay = noteSpacing * index;
                         setTimeout(() => {
-                            sendMidiNote(expandedNote, velocity, outputChannel); // Play EXPANDED note
+                            sendMidiNote(expandedNote, velocity, outputChannel);
                         }, delay);
                     });
                 } else {
@@ -2136,14 +2275,15 @@
                         const originalNote = octaveExpandedNoteMap.get(expandedNote);
                         let pressure = notePressures.get(originalNote) || defaultNotePressure;
                         let velocity = calculateVelocity(pressure);
-                        sendMidiNote(expandedNote, velocity, outputChannel); // Play EXPANDED note
+                        sendMidiNote(expandedNote, velocity, outputChannel);
                     });
                 }
             }
         }
 
-
-        /** Sends MIDI note off messages for all held notes. */
+        /**
+         * Sends MIDI note off messages for all held notes.
+         */
         function allNotesOff() {
             if (midiOutput) {
                 let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
@@ -2157,7 +2297,7 @@
          * Updates the playback display with the latest arpeggiator step.
          * @param {string} stepType - Type of step ('note', 'rest', 'skip', 'error').
          * @param {number|null} note - MIDI note number for 'note' steps, null otherwise.
-         * @param {boolean} isChord - True if a chord was played in this step, false otherwise.
+         * @param {boolean} [isChord=false] - True if a chord was played in this step, false otherwise.
          */
         function updatePlaybackDisplay(stepType, note, isChord = false) {
             if (stepType === null) return;
@@ -2169,9 +2309,9 @@
             if (stepType === 'note') {
                 if (isChord) {
                     if (arpMode === 'chordN') {
-                        stepElem.textContent = `Ch${((currentNoteIndex + currentModeNoteList.length - 1) % currentModeNoteList.length) + 1}`; // Display 'Ch1', 'Ch2' etc for ChordN
+                        stepElem.textContent = `Ch${((currentNoteIndex + currentModeNoteList.length - 1) % currentModeNoteList.length) + 1}`;
                     } else {
-                        stepElem.textContent = 'Ch'; // Display 'Ch' for chord
+                        stepElem.textContent = 'Ch';
                     }
                 } else if (note !== null) {
                     stepElem.textContent = midiNoteToName(note);
@@ -2180,8 +2320,7 @@
                 stepElem.textContent = 'R';
             } else if (stepType === 'skip') {
                 stepElem.textContent = 'S';
-            }
-            else if (stepType === 'error') {
+            } else if (stepType === 'error') {
                 stepElem.textContent = '!';
             }
 
@@ -2193,8 +2332,9 @@
             playbackDisplayElem.scrollLeft = playbackDisplayElem.scrollWidth;
         }
 
-
-        /** Generates the piano keyboard UI. */
+        /**
+         * Generates the piano keyboard UI.
+         */
         function generatePianoKeyboardUI() {
             const pianoKeyboard = document.getElementById('pianoKeyboard');
             const startNote = 48; // Low C (C3)
@@ -2239,19 +2379,19 @@
             } else if (heldNotesUI.has(note) && source === null) {
                 keyElement.classList.add('key-held-ui');
             } else if (heldNotesMIDI.has(note) && source === 'midi') {
-                 keyElement.classList.add('key-held-midi');
+                keyElement.classList.add('key-held-midi');
             }
         }
 
         /**
-         * Highlights a piano key in the UI to indicate it's the current arpeggio note.
-         * Unhighlights any previously highlighted key.
+         * Highlights piano keys in the UI to indicate current arpeggio notes.
+         * Unhighlights any previously highlighted keys.
          * @param {number|number[]} notes - MIDI note number or array of MIDI note numbers of the keys to highlight.
          */
-         function highlightPianoKeys(notes) {
-         const notesArray = Array.isArray(notes) ? notes : [notes];
-            unhighlightPianoKeys(); // Clear any single note highlights first
-            if (notesArray && notesArray.length > 0) { // Check if notesArray is valid
+        function highlightPianoKeys(notes) {
+            const notesArray = Array.isArray(notes) ? notes : [notes];
+            unhighlightPianoKeys();
+            if (notesArray && notesArray.length > 0) {
                 notesArray.forEach(note => {
                     const keyElement = document.getElementById(`pianoKey-${note}`);
                     if (keyElement) {
@@ -2261,14 +2401,15 @@
             }
         }
 
-
-        /** Unhighlights all highlighted piano keys in the interactive keyboard. */
+        /**
+         * Unhighlights all highlighted piano keys in the interactive keyboard.
+         */
         function unhighlightPianoKeys() {
-	            const currentHighlightedKeys = document.querySelectorAll('#pianoKeyboard .key.key-current');
-	            currentHighlightedKeys.forEach(key => {
-	                key.classList.remove('key-current');
-	            });
-	            highlightedPianoKey = null; // Optionally reset highlightedPianoKey as well
+            const currentHighlightedKeys = document.querySelectorAll('#pianoKeyboard .key.key-current');
+            currentHighlightedKeys.forEach(key => {
+                key.classList.remove('key-current');
+            });
+            highlightedPianoKey = null;
         }
 
         /**
@@ -2276,7 +2417,7 @@
          * Unhighlights any previously highlighted step in the same rhythm display.
          * @param {string} displayElementId - ID of the rhythm display ('patternDisplay' or 'rhythmDisplay').
          * @param {number} stepIndex - Index of the step to highlight.
-         * @param {number} gateExtension - Number of steps to extend the gate highlight over (for gate flex).
+         * @param {number} [gateExtension=0] - Number of steps to extend the gate highlight over (for gate flex).
          */
         function highlightRhythmStep(displayElementId, stepIndex, gateExtension = 0) {
             unhighlightRhythmStep(displayElementId);
@@ -2284,7 +2425,7 @@
             if (stepElement) {
                 stepElement.classList.add('current-step');
             }
-            if (isGateFlexEnabled && displayElementId === 'rhythmDisplay' && gateExtension > 1) { // Gate flex highlight
+            if (isGateFlexEnabled && displayElementId === 'rhythmDisplay' && gateExtension > 1) {
                 for (let i = 1; i < gateExtension; i++) {
                     const extendedStepIndex = (stepIndex + i) % rhythm.length;
                     const extendedStepElement = document.getElementById(`${displayElementId}-step-${extendedStepIndex}`);
@@ -2308,61 +2449,64 @@
             gateExtendedSteps.forEach(step => step.classList.remove('gate-extended-step'));
         }
 
-        /** Highlights the current step in the pattern rhythm display, only if not disabled. */
+        /**
+         * Highlights the current step in the pattern rhythm display, only if not disabled.
+         */
         function highlightCurrentPatternStep() {
-            if (!isPatternDisabled) { // NEW: Check if pattern is disabled
+            if (!isPatternDisabled) {
                 highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
             }
         }
 
-        /** Highlights the current step in the arpeggio rhythm display, only if not disabled. */
+        /**
+         * Highlights the current step in the arpeggio rhythm display, only if not disabled.
+         */
         function highlightCurrentArpRhythmStep() {
-            if (!isRhythmDisabled) { // NEW: Check if rhythm is disabled
-                highlightRhythmStep('rhythmDisplay', currentRhythmIndex, isGateFlexEnabled ? rhythmGateMultipliers[currentRhythmIndex] : 0); // Pass gate extension if enabled
+            if (!isRhythmDisabled) {
+                highlightRhythmStep('rhythmDisplay', currentRhythmIndex, isGateFlexEnabled ? rhythmGateMultipliers[currentRhythmIndex] : 0);
             }
         }
 
-        /** Unhighlights all current step highlights (rhythm steps and piano key). */
+        /**
+         * Unhighlights all current step highlights (rhythm steps and piano key).
+         */
         function unhighlightCurrentStep() {
             unhighlightRhythmStep('patternDisplay');
             unhighlightRhythmStep('rhythmDisplay');
             unhighlightPianoKeys();
         }
 
-
         /**
          * Highlights the current arpeggiator step in the UI (rhythm steps and piano key).
          * @param {string} stepType - Type of step ('note', 'rest', 'skip').
          * @param {number|null} note - MIDI note number to highlight on the piano key, null otherwise.
-         * @param {boolean} highlightAllKeys - If true, highlights all held keys (for chord mode).
+         * @param {boolean} [highlightAllKeys=false] - If true, highlights all held keys (for chord mode).
          */
         function highlightCurrentStep(stepType, note, highlightAllKeys = false) {
-            unhighlightPianoKeys(); // Always unhighlight keys at the start of highlightCurrentStep
+            unhighlightPianoKeys();
             unhighlightPlaybackPianoKeys();
 
             highlightCurrentArpRhythmStep();
             highlightCurrentPatternStep();
 
-
             if (stepType === 'note') {
                 if (arpMode === 'chordN') {
                     const currentChord = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
-                    highlightPianoKeys(currentChord); // Highlight specific chord notes for ChordN
+                    highlightPianoKeys(currentChord);
                     highlightPlaybackPianoKeys(currentChord);
                 } else if (highlightAllKeys) {
-                    highlightPianoKeys(heldNotes); // Highlight all held keys for chord mode
+                    highlightPianoKeys(heldNotes);
                     highlightPlaybackPianoKeys(heldNotes);
                 } else if (note !== null) {
-                    highlightPianoKeys(note); // Highlight single note for other modes
+                    highlightPianoKeys(note);
                     highlightPlaybackPianoKeys(note);
                 }
             }
-            // If stepType is 'rest' or 'skip', we unhighlighted at the start, and do nothing more with piano keys, which is correct.
         }
 
-        // --- NEW PLAYBACK KEYBOARD FUNCTIONS ---
-
-        /** Generates the non-interactive playback piano keyboard UI. */
+        /**
+         * Generates the non-interactive playback piano keyboard UI.
+         */
         function generatePlaybackPianoKeyboardUI() {
             const playbackKeyboard = document.getElementById('playbackKeyboardDisplay');
             const startNote = 36; // C2
@@ -2385,26 +2529,31 @@
             }
         }
 
-        /** Updates the visual state of the playback piano keyboard UI based on held and playing notes. */
+        /**
+         * Updates the visual state of the playback piano keyboard UI based on held and playing notes.
+         */
         function updatePlaybackKeyboardUI() {
             const playbackKeys = document.querySelectorAll('.playback-key');
             playbackKeys.forEach(key => {
                 const note = parseInt(key.dataset.note);
-                key.classList.remove('key-held-ui', 'key-held-midi', 'key-current', 'key-held-octave-expanded'); // Clear all highlight classes, including new one
+                key.classList.remove('key-held-ui', 'key-held-midi', 'key-current', 'key-held-octave-expanded');
 
                 if (heldNotesUI.has(note)) {
-                    key.classList.add('key-held-ui'); // Highlight UI held notes
+                    key.classList.add('key-held-ui');
                 } else if (heldNotesMIDI.has(note)) {
-                    key.classList.add('key-held-midi'); // Highlight MIDI held notes
+                    key.classList.add('key-held-midi');
                 } else if (heldNotes.includes(note) && !rawHeldNotes.includes(note)) {
-                    key.classList.add('key-held-octave-expanded'); // Highlight octave-expanded notes
+                    key.classList.add('key-held-octave-expanded');
                 }
             });
         }
 
-        /** Highlights a set of piano keys on the playback keyboard for chords. */
+        /**
+         * Highlights piano keys on the playback keyboard for chords or single notes.
+         * @param {number|number[]} notes - MIDI note number or array of MIDI note numbers to highlight.
+         */
         function highlightPlaybackPianoKeys(notes) {
-        	const notesArray = Array.isArray(notes) ? notes : [notes];
+            const notesArray = Array.isArray(notes) ? notes : [notes];
             unhighlightPlaybackPianoKeys();
             if (notesArray && notesArray.length > 0) {
                 notesArray.forEach(note => {
@@ -2416,7 +2565,9 @@
             }
         }
 
-        /** Unhighlights the currently highlighted piano key on the playback keyboard. */
+        /**
+         * Unhighlights the currently highlighted piano key on the playback keyboard.
+         */
         function unhighlightPlaybackPianoKeys() {
             const currentHighlightedKeys = document.querySelectorAll('#playbackKeyboardDisplay .playback-key.key-current');
             currentHighlightedKeys.forEach(key => {
@@ -2425,7 +2576,9 @@
             highlightedPlaybackPianoKey = null;
         }
 
-        /** Clears all highlights from the playback piano keyboard (held and current notes). */
+        /**
+         * Clears all highlights from the playback piano keyboard (held and current notes).
+         */
         function unhighlightPlaybackPianoKeysAll() {
             const playbackKeys = document.querySelectorAll('.playback-key');
             playbackKeys.forEach(key => {
@@ -2434,24 +2587,29 @@
             highlightedPlaybackPianoKey = null;
         }
 
+        // --- WALK MODE FUNCTIONS ---
 
-        // --- NEW WALK MODE FUNCTIONS ---
-
-        /** Advances the arpeggio note index for 'walk' mode based on probabilities. */
+        /**
+         * Advances the arpeggio note index for 'walk' mode based on probabilities.
+         */
         function advanceWalkIndex() {
             const probabilities = calculateWalkProbabilities(walkSkew);
             const rand = Math.random();
             if (rand < probabilities.prev) {
-                currentNoteIndex = (currentNoteIndex - 1 + currentModeNoteList.length) % currentModeNoteList.length; // Move to previous
+                currentNoteIndex = (currentNoteIndex - 1 + currentModeNoteList.length) % currentModeNoteList.length;
             } else if (rand < probabilities.prev + probabilities.current) {
-                // Stay at current index - do nothing
+                // Stay at current index
             } else {
-                currentNoteIndex = (currentNoteIndex + 1) % currentModeNoteList.length; // Move to next
+                currentNoteIndex = (currentNoteIndex + 1) % currentModeNoteList.length;
             }
-             advanceRhythmIndex(); // Advance rhythm index after walk step
+            advanceRhythmIndex();
         }
 
-        /** Calculates probabilities for walk mode based on walkSkew parameter. */
+        /**
+         * Calculates probabilities for walk mode based on walkSkew parameter.
+         * @param {number} skew - Walk skew value (-1 to 1).
+         * @returns {{next: number, current: number, prev: number}} - Probabilities for next, current, and previous steps.
+         */
         function calculateWalkProbabilities(skew) {
             let prob_next, prob_current, prob_prev;
             let subSkew = 0.5 + (skew / 2);
@@ -2464,58 +2622,62 @@
                 prob_next = (1 - prob_prev) * subSkew;
                 prob_current = (1 - prob_prev - prob_next);
             }
-            return { next: prob_next, current: prob_current, prev: prob_prev };
+            return {
+                next: prob_next,
+                current: prob_current,
+                prev: prob_prev
+            };
         }
 
-
-        /** Advances the arpeggio note index for 'normalWalk' mode using normal distribution. */
+        /**
+         * Advances the arpeggio note index for 'normalWalk' mode using normal distribution.
+         */
         function advanceNormalWalkIndex() {
-        	let NoteCenterIndex = currentNoteIndex + 0.5;
-            const sigma = 0.3 + walkDistance; // Map walkDistance (0-1) to sigma (0.43-1.29)
-            const mu = 2 * walkSkew; // Map walkSkew (-1 to 1) to mean (-2 to 2) - adjust range if needed
+            let NoteCenterIndex = currentNoteIndex + 0.5;
+            const sigma = 0.3 + walkDistance;
+            const mu = 2 * walkSkew;
 
             const stepChange = sampleNormalDistribution(mu, sigma);
-            const maxStepChange = 3.4999; // Limit max step change to +/- 3
-            const clampedStepChange = Math.max(-maxStepChange, Math.min(maxStepChange, stepChange)); // Clamp step change
+            const maxStepChange = 3.4999;
+            const clampedStepChange = Math.max(-maxStepChange, Math.min(maxStepChange, stepChange));
 
-            currentNoteIndex = (Math.floor(currentNoteIndex + clampedStepChange) + currentModeNoteList.length * Math.ceil(maxStepChange)) % currentModeNoteList.length; // Apply step change with wrap-around
-            advanceRhythmIndex(); // Advance rhythm index after normal walk step
+            currentNoteIndex = (Math.floor(currentNoteIndex + clampedStepChange) + currentModeNoteList.length * Math.ceil(maxStepChange)) % currentModeNoteList.length;
+            advanceRhythmIndex();
         }
 
-
-        /** Samples from a normal distribution using Box-Muller transform.  */
+        /**
+         * Samples from a normal distribution using Box-Muller transform.
+         * @param {number} mu - Mean of the distribution.
+         * @param {number} sigma - Standard deviation of the distribution.
+         * @returns {number} - A sample from the normal distribution.
+         */
         function sampleNormalDistribution(mu, sigma) {
-            let u1 = 0, u2 = 0;
-            while(u1 === 0) u1 = Math.random(); // Ensure u1 is not 0
-            while(u2 === 0) u2 = Math.random(); // Ensure u2 is not 0
+            let u1 = 0,
+                u2 = 0;
+            while (u1 === 0) u1 = Math.random();
+            while (u2 === 0) u2 = Math.random();
 
             const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-            // const z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2); // We only need one sample
 
-            return z0 * sigma + mu; // Scale and shift to desired distribution
+            return z0 * sigma + mu;
         }
-
-
-        // --- Event listeners for parameter changes (sliders and dropdowns) - CONSOLIDATED ---
-
 
         // --- Initialization ---
         generatePianoKeyboardUI();
         generatePlaybackPianoKeyboardUI();
         updatePlaybackKeyboardUI();
         updateRhythmDisplays();
-        updateModeNoteList(); // Initial note list generation on load
-        document.getElementById('chordNValueDisplay').textContent = chordNValue; // Initialize ChordN display
-        document.getElementById('baseVelocityValue').textContent = baseVelocityValue; // Initialize Base Velocity display
-        document.getElementById('maxVelocityValue').textContent = maxVelocityValue; // Initialize Max Velocity display
-        document.getElementById('walkSkewValue').textContent = walkSkew.toFixed(2); // Initialize Walk Skew display
-        document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2); // Initialize Walk Distance display
-        document.getElementById('gateLengthValue').textContent = gateLengthPercentage; // Initialize Gate Length display
-        document.getElementById('subArpScaleValue').textContent = subArpScalePercentage; // Initialize Sub Arp Scale display
-        updateTempoDisplay(); // Initialize tempo display
-        updatePatternControlsState(); // Initialize pattern controls state on load
-        updateRhythmControlsState();   // Initialize rhythm controls state on load
-
+        updateModeNoteList();
+        document.getElementById('chordNValueDisplay').textContent = chordNValue;
+        document.getElementById('baseVelocityValue').textContent = baseVelocityValue;
+        document.getElementById('maxVelocityValue').textContent = maxVelocityValue;
+        document.getElementById('walkSkewValue').textContent = walkSkew.toFixed(2);
+        document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2);
+        document.getElementById('gateLengthValue').textContent = gateLengthPercentage;
+        document.getElementById('subArpScaleValue').textContent = subArpScalePercentage;
+        updateTempoDisplay();
+        updatePatternControlsState();
+        updateRhythmControlsState();
     </script>
 </body>
 </html>
