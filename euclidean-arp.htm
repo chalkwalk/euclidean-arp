@@ -309,6 +309,7 @@
         let heldNotesUI = new Set(); // Stores notes held by UI interaction
         let heldNotesMIDI = new Set(); // Stores notes held by MIDI input
         let notePressures = new Map(); // Stores pressure values for each held MIDI note (for aftertouch/velocity)
+        let octaveExpandedNoteMap = new Map(); // NEW: Map for octave expanded notes to original notes
 
         // --- Rhythm Pattern Variables ---
         let patternRhythm = []; // Euclidean rhythm for note pattern (Note/Skip)
@@ -383,7 +384,9 @@
         document.getElementById('octaves').addEventListener('input', function() {
             octaveCount = parseInt(this.value);
             document.getElementById('octavesValue').textContent = octaveCount;
-            heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
+            const expansionResult = generateOctaveExpandedNotes(rawHeldNotes, octaveCount); // --- UPDATED ---
+            heldNotes = expansionResult.expandedNotes; // --- UPDATED ---
+            octaveExpandedNoteMap = expansionResult.noteMap; // --- UPDATED ---
             updateHeldNotesDisplay();
             updateModeNoteList();
         });
@@ -523,24 +526,37 @@
         }
 
 
-        /**
-         * Expands a list of MIDI notes to include octaves above the original notes.
+        /** --- REFACTORED ---
+         * Expands a list of MIDI notes to include octaves above the original notes,
+         * and keeps pressure information for each note using a mapping.
          * Removes duplicate notes and sorts the result.
          * @param {number[]} rawNotes - Array of MIDI note numbers to expand.
          * @param {number} octaves - Number of octaves to expand to (including the original octave).
-         * @returns {number[]} - Array of octave-expanded, unique, and sorted MIDI note numbers.
+         * @returns {object} - An object containing:
+         *                     - expandedNotes: Array of octave-expanded, unique, and sorted MIDI note numbers.
+         *                     - noteMap: Map where key is expanded note, value is original note.
          */
-        function generateOctaveExpandedNotes(rawNotes, octaves) {
+        function generateOctaveExpandedNotes(rawNotes, octaves) { // --- UPDATED ---
             if (octaves <= 1) {
-                return [...new Set(rawNotes)].sort((a, b) => a - b);
+                return {
+                    expandedNotes: [...new Set(rawNotes)].sort((a, b) => a - b),
+                    noteMap: new Map(rawNotes.map(note => [note, note])) // Map original note to itself for octave=1
+                };
             }
             let expandedNotes = [];
+            const noteMap = new Map();
             for (const note of rawNotes) {
                 for (let i = 0; i < octaves; i++) {
-                    expandedNotes.push(note + (12 * i));
+                    const expandedNote = note + (12 * i);
+                    expandedNotes.push(expandedNote);
+                    noteMap.set(expandedNote, note); // Map expanded note to original note
                 }
             }
-            return [...new Set(expandedNotes)].sort((a, b) => a - b);
+            const uniqueExpandedNotes = [...new Set(expandedNotes)].sort((a, b) => a - b);
+            return {
+                expandedNotes: uniqueExpandedNotes,
+                noteMap: noteMap
+            };
         }
 
         /** --- REFACTORED ---
@@ -586,18 +602,22 @@
                         rawHeldNotes.splice(indexToRemove, 1);
                     }
                 }
-                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
+                const expansionResult = generateOctaveExpandedNotes(rawHeldNotes, octaveCount); // --- UPDATED ---
+                heldNotes = expansionResult.expandedNotes; // --- UPDATED ---
+                octaveExpandedNoteMap = expansionResult.noteMap; // --- UPDATED ---
                 updatePianoKeyboardUI(note, heldSet.has(note) ? 'ui' : null);
             } else { // source === 'midi'
                 if (!heldNotesMIDI.has(note)) {
                     heldNotesMIDI.add(note);
                     rawHeldNotes.push(note);
                 }
-                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
+                const expansionResult = generateOctaveExpandedNotes(rawHeldNotes, octaveCount); // --- UPDATED ---
+                heldNotes = expansionResult.expandedNotes; // --- UPDATED ---
+                octaveExpandedNoteMap = expansionResult.noteMap; // --- UPDATED ---
                 updatePianoKeyboardUI(note, 'midi');
             }
 
-            notePressures.set(note, defaultNotePressure); // Initialize pressure for new note to default (0)
+            notePressures.set(note, defaultNotePressure);
             updateHeldNotesDisplay();
 
             if (arpSyncMode === 'key' && !arpRunning) {
@@ -641,7 +661,9 @@
                 if (indexToRemove > -1) {
                     rawHeldNotes.splice(indexToRemove, 1);
                 }
-                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
+                const expansionResult = generateOctaveExpandedNotes(rawHeldNotes, octaveCount); // --- UPDATED ---
+                heldNotes = expansionResult.expandedNotes; // --- UPDATED ---
+                octaveExpandedNoteMap = expansionResult.noteMap; // --- UPDATED ---
                 updatePianoKeyboardUI(note, heldNotesUI.has(note) ? 'ui' : null);
             }
 
@@ -1140,12 +1162,13 @@
          */
         function onMIDIMessage(message) {
             const command = message.data[0];
+            const commandHiBits = command & 0xF0;
             const channel = command & 0x0F;
             const note = message.data[1];
             const velocity = (message.data.length > 2) ? message.data[2] : 0;
             const pressure = velocity; // Velocity byte is used for pressure in aftertouch messages
 
-            if (command === 248) { // MIDI Clock Tick - 0xF8 (248 in decimal)
+            if (command === 0xF8) { // MIDI Clock Tick - 0xF8 (248 in decimal)
                 handleMIDITick();
                 return;
             }
@@ -1163,19 +1186,19 @@
             }
 
             if (processMessage) {
-                if (command >= 144 && command < 160) { // Note On
+                if (commandHiBits === 0x90) { // Note On
                     if (velocity > 0) {
                         noteOn(note, 'midi');
                     } else {
-                        noteOff(note, 'midi'); // Note Off with velocity 0
+                        noteOff(note, 'midi'); // Note Off if velocity 0
                     }
-                } else if (command >= 128 && command < 144 || (command >= 144 && command < 160 && velocity === 0)) { // Note Off or Note On with velocity 0
+                } else if (commandHiBits === 0x80) { // Note Off
                     noteOff(note, 'midi');
-                } else if (command >= 160 && command < 176) { // Polyphonic Aftertouch (0xA0-0xAF)
+                } else if (commandHiBits === 0xA0) { // Polyphonic Aftertouch (0xA0-0xAF)
                     if (notePressures.has(note)) {
                         notePressures.set(note, pressure);
                     }
-                } else if (command >= 208 && command < 224) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
+                } else if (commandHiBits === 0xD0) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
                     // Apply channel pressure to all currently held MIDI notes
                     heldNotesMIDI.forEach(heldNote => {
                         if (notePressures.has(heldNote)) {
@@ -1356,10 +1379,11 @@
                 let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
                 const notesArray = Array.isArray(notes) ? notes : [notes]; // Ensure notes is always an array
 
-                notesArray.forEach(note => {
-                    let pressure = notePressures.get(note) || defaultNotePressure;
+                notesArray.forEach(expandedNote => { // --- UPDATED - using expandedNote ---
+                    const originalNote = octaveExpandedNoteMap.get(expandedNote); // --- UPDATED - pressure lookup using map ---
+                    let pressure = notePressures.get(originalNote) || defaultNotePressure;
                     let velocity = calculateVelocity(pressure);
-                    sendMidiNote(note, velocity, outputChannel);
+                    sendMidiNote(expandedNote, velocity, outputChannel); // Play EXPANDED note
                 });
             }
         }
