@@ -1,0 +1,341 @@
+<html>
+<head>
+    <title>Euclidean MPE Arpeggiator Prototype</title>
+    <style>
+        body { font-family: sans-serif; }
+        .rhythm-display { display: flex; margin-bottom: 10px; }
+        .rhythm-step { width: 20px; height: 20px; border: 1px solid #ccc; text-align: center; line-height: 20px; font-size: 12px; }
+        .beat { background-color: lightgreen; }
+        .rest { background-color: lightcoral; }
+        .skip { background-color: lightblue; }
+        .note { background-color: yellow; }
+        .held-notes-display { margin-bottom: 10px; }
+        .parameter-group { margin-bottom: 10px; }
+        .note-selector { display: flex; margin-bottom: 10px; }
+        .note-button { padding: 5px 10px; margin-right: 5px; border: 1px solid #ccc; cursor: pointer; }
+        .note-button.selected { background-color: lightblue; }
+        .playback-display { display: flex; overflow-x: hidden; border: 1px solid #ccc; height: 30px; margin-bottom: 10px; }
+        .playback-note { width: 20px; height: 20px; border: 1px solid black; margin-right: 2px; background-color: lightyellow; }
+    </style>
+</head>
+<body>
+    <h1>Euclidean MPE Arpeggiator Prototype</h1>
+
+    <div id="midiStatus">MIDI Status: Not connected</div>
+
+    <div class="held-notes-display">
+        <strong>Held MIDI Notes:</strong> <span id="heldNotes"></span>
+    </div>
+
+    <div class="note-selector">
+        <strong>Select UI Notes:</strong>
+        <button class="note-button" data-note="60">C</button>
+        <button class="note-button" data-note="62">D</button>
+        <button class="note-button" data-note="64">E</button>
+        <button class="note-button" data-note="65">F</button>
+        <button class="note-button" data-note="67">G</button>
+        <button class="note-button" data-note="69">A</button>
+        <button class="note-button" data-note="71">B</button>
+    </div>
+    <div class="held-notes-display">
+        <strong>Selected UI Notes:</strong> <span id="uiHeldNotesDisplay"></span>
+    </div>
+
+    <div class="parameter-group">
+        <h3>Pattern</h3>
+        <label for="patternSteps">Steps:</label>
+        <input type="number" id="patternSteps" value="4" min="1">
+        <label for="patternBeats">Beats:</label>
+        <input type="number" id="patternBeats" value="3" min="1">
+        <label for="patternOffset">Offset:</label>
+        <input type="number" id="patternOffset" value="1" min="0">
+        <div id="patternDisplay" class="rhythm-display"></div>
+    </div>
+
+    <div class="parameter-group">
+        <h3>Arp Rhythm</h3>
+        <label for="arpRhythmSteps">Steps:</label>
+        <input type="number" id="arpRhythmSteps" value="5" min="1">
+        <label for="arpRhythmBeats">Beats:</label>
+        <input type="number" id="arpRhythmBeats" value="3" min="1">
+        <label for="arpRhythmOffset">Offset:</label>
+        <input type="number" id="arpRhythmOffset" value="0" min="0">
+        <div id="arpRhythmDisplay" class="rhythm-display"></div>
+    </div>
+
+    <div class="parameter-group">
+        <h3>Arpeggiator Settings</h3>
+        <label for="clockDivision">Clock Division (ms):</label>
+        <input type="number" id="clockDivision" value="250" min="10">
+    </div>
+
+    <div class="playback-display" id="playbackDisplay"></div>
+
+    <button id="startButton">Start Arpeggiator</button>
+    <button id="stopButton" disabled>Stop Arpeggiator</button>
+
+    <script>
+        let midiAccess;
+        let midiOutput;
+        let heldNotes = []; // Notes from MIDI input
+        let uiHeldNotes = []; // Notes selected in UI
+        let patternRhythm = [];
+        let arpRhythm = [];
+        let arpRunning = false;
+        let arpInterval;
+        let currentArpNoteIndex = 0;
+        let currentArpRhythmIndex = 0;
+        let currentPatternIndex = 0;
+        const playbackDisplayElem = document.getElementById('playbackDisplay');
+        const maxPlaybackNotes = 30; // Limit number of displayed notes for scrolling effect
+
+        document.getElementById('startButton').addEventListener('click', startArpeggiator);
+        document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
+
+        // UI Note Selection
+        const noteButtons = document.querySelectorAll('.note-button');
+        noteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const noteValue = parseInt(this.dataset.note);
+                const index = uiHeldNotes.indexOf(noteValue);
+                if (index > -1) {
+                    uiHeldNotes.splice(index, 1); // Remove if already selected
+                    this.classList.remove('selected');
+                } else {
+                    uiHeldNotes.push(noteValue); // Add if not selected
+                    this.classList.add('selected');
+                }
+                updateUiHeldNotesDisplay();
+            });
+        });
+
+        function updateUiHeldNotesDisplay() {
+            const noteNames = uiHeldNotes.map(midiNoteToName);
+            document.getElementById('uiHeldNotesDisplay').innerText = noteNames.join(", ");
+        }
+
+        // MIDI Initialization (as before)
+        navigator.requestMIDIAccess()
+            .then(onMIDISuccess, onMIDIFailure);
+
+        function onMIDISuccess(midi) {
+            midiAccess = midi;
+            document.getElementById('midiStatus').innerText = "MIDI Status: Connected";
+
+            const inputs = midiAccess.inputs.values();
+            for (let input = inputs.next(); input && !input.done; input = inputs.next()) {
+                input.value.onmidimessage = onMIDIMessage;
+            }
+
+            const outputs = midiAccess.outputs.values();
+            for (let output = outputs.next(); output && !output.done; output = outputs.next()) {
+                midiOutput = output.value; // Use the first available output
+                break; // For now, just use the first output.
+            }
+             if (!midiOutput) {
+                document.getElementById('midiStatus').innerText = "MIDI Status: No MIDI output device found.";
+            }
+        }
+
+        function onMIDIFailure() {
+            document.getElementById('midiStatus').innerText = "MIDI Status: MIDI access failed.";
+        }
+
+        function onMIDIMessage(message) {
+            const command = message.data[0];
+            const note = message.data[1];
+            const velocity = (message.data.length > 2) ? message.data[2] : 0;
+
+            if (command >= 144 && command < 160) { // Note On
+                if (velocity > 0) {
+                    noteOn(note);
+                } else {
+                    noteOff(note);
+                }
+            } else if (command >= 128 && command < 144 || (command >= 144 && command < 160 && velocity === 0)) { // Note Off
+                noteOff(note);
+            }
+        }
+
+        function noteOn(note) {
+            if (!heldNotes.includes(note)) {
+                heldNotes.push(note);
+                updateHeldNotesDisplay();
+            }
+        }
+
+        function noteOff(note) {
+            const index = heldNotes.indexOf(note);
+            if (index > -1) {
+                heldNotes.splice(index, 1);
+                updateHeldNotesDisplay();
+            }
+        }
+
+        function updateHeldNotesDisplay() {
+            const noteNames = heldNotes.map(midiNoteToName);
+            document.getElementById('heldNotes').innerText = noteNames.join(", ");
+        }
+
+        function midiNoteToName(note) {
+            const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+            const octave = Math.floor(note / 12) - 1;
+            const noteName = notes[note % 12];
+            return noteName + octave;
+        }
+
+
+        function generateEuclideanRhythm(steps, beats, offset, beatEvent, restEvent) {
+            const rhythm = new Array(steps).fill(restEvent);
+            let count = 0;
+            for (let i = 0; i < steps; i++) {
+                if ((count * steps) < (beats * (i + 1))) {
+                    rhythm[i] = beatEvent;
+                    count++;
+                }
+            }
+            for (let i = 0; i < offset; i++) {
+                rhythm.unshift(rhythm.pop());
+            }
+            return rhythm;
+        }
+
+        function updateRhythmDisplays() {
+            const patternSteps = parseInt(document.getElementById('patternSteps').value);
+            const patternBeats = parseInt(document.getElementById('patternBeats').value);
+            const patternOffset = parseInt(document.getElementById('patternOffset').value);
+            patternRhythm = generateEuclideanRhythm(patternSteps, patternBeats, patternOffset, 'N', 'S');
+            displayRhythm(patternRhythm, 'patternDisplay');
+
+            const arpRhythmSteps = parseInt(document.getElementById('arpRhythmSteps').value);
+            const arpRhythmBeats = parseInt(document.getElementById('arpRhythmBeats').value);
+            const arpRhythmOffset = parseInt(document.getElementById('arpRhythmOffset').value);
+            arpRhythm = generateEuclideanRhythm(arpRhythmSteps, arpRhythmBeats, arpRhythmOffset, 'B', 'R');
+            displayRhythm(arpRhythm, 'arpRhythmDisplay');
+        }
+
+        function displayRhythm(rhythmArray, displayElementId) {
+            const displayElement = document.getElementById(displayElementId);
+            displayElement.innerHTML = '';
+            rhythmArray.forEach(event => {
+                const stepElement = document.createElement('div');
+                stepElement.classList.add('rhythm-step');
+                stepElement.innerText = event;
+                if (event === 'B') stepElement.classList.add('beat');
+                else if (event === 'R') stepElement.classList.add('rest');
+                else if (event === 'S') stepElement.classList.add('skip');
+                else if (event === 'N') stepElement.classList.add('note');
+                displayElement.appendChild(stepElement);
+            });
+        }
+
+        function startArpeggiator() {
+            if (!midiOutput && heldNotes.length === 0 && uiHeldNotes.length === 0) {
+                alert("No MIDI output device found and no UI notes selected. Please connect MIDI or select UI notes.");
+                return;
+            }
+            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes; // Prioritize MIDI notes if available, otherwise use UI notes
+            if (notesToArp.length === 0) {
+                alert("Hold some notes or select UI notes to start the arpeggiator.");
+                return;
+            }
+
+            arpRunning = true;
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('stopButton').disabled = false;
+            updateRhythmDisplays();
+
+            currentArpNoteIndex = 0;
+            currentArpRhythmIndex = 0;
+            currentPatternIndex = 0;
+            playbackDisplayElem.innerHTML = ''; // Clear playback display
+
+            const clockDivision = parseInt(document.getElementById('clockDivision').value);
+            arpInterval = setInterval(arpStep, clockDivision);
+        }
+
+        function stopArpeggiator() {
+            arpRunning = false;
+            clearInterval(arpInterval);
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+            allNotesOff();
+            playbackDisplayElem.innerHTML = ''; // Clear playback display on stop too
+        }
+
+        function arpStep() {
+            if (!arpRunning) {
+                stopArpeggiator();
+                return;
+            }
+
+            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes; // Choose notes source again in case it changed
+            if (notesToArp.length === 0) {
+                stopArpeggiator(); // Stop if no notes to arp anymore
+                return;
+            }
+
+            const currentArpRhythmEvent = arpRhythm[currentArpRhythmIndex];
+            const currentPatternEvent = patternRhythm[currentPatternIndex];
+
+            if (currentArpRhythmEvent === 'B') { // Beat in Arp Rhythm
+                if (currentPatternEvent === 'N') { // Note in Pattern
+                    const noteToPlay = notesToArp[currentArpNoteIndex % notesToArp.length];
+                    playNote(noteToPlay);
+                    currentArpNoteIndex++;
+                    currentPatternIndex = (currentPatternIndex + 1) % patternRhythm.length;
+                } else if (currentPatternEvent === 'S') { // Skip in Pattern
+                    currentPatternIndex = (currentPatternIndex + 1) % patternRhythm.length;
+                    currentArpNoteIndex++;
+                }
+            } else if (currentArpRhythmEvent === 'R') { // Rest in Arp Rhythm
+                // Do nothing
+            }
+
+            currentArpRhythmIndex = (currentArpRhythmIndex + 1) % arpRhythm.length;
+        }
+
+        function playNote(note) {
+            updatePlaybackDisplay(note); // Show note in playback display
+
+            if (midiOutput) {
+                midiOutput.send([0x90, note, 100]); // Note On
+                setTimeout(() => { midiOutput.send([0x80, note, 0]); }, 50); // Note Off
+            }
+        }
+
+        function allNotesOff() {
+            if (midiOutput) {
+                for (const note of heldNotes) {
+                    midiOutput.send([0x80, note, 0]); // Note Off for all held notes
+                }
+            }
+        }
+
+        function updatePlaybackDisplay(note) {
+            const noteElem = document.createElement('div');
+            noteElem.classList.add('playback-note');
+            noteElem.textContent = midiNoteToName(note).replace(/\d+/g, ''); // Display note name without octave
+            playbackDisplayElem.appendChild(noteElem);
+
+            // Keep only a limited number of notes in display for scrolling effect
+            if (playbackDisplayElem.children.length > maxPlaybackNotes) {
+                playbackDisplayElem.removeChild(playbackDisplayElem.firstChild);
+            }
+            playbackDisplayElem.scrollLeft = playbackDisplayElem.scrollWidth; // Auto-scroll to right
+        }
+
+
+        // Event listeners for parameter changes (as before)
+        document.getElementById('patternSteps').addEventListener('change', updateRhythmDisplays);
+        document.getElementById('patternBeats').addEventListener('change', updateRhythmDisplays);
+        document.getElementById('patternOffset').addEventListener('change', updateRhythmDisplays);
+        document.getElementById('arpRhythmSteps').addEventListener('change', updateRhythmDisplays);
+        document.getElementById('arpRhythmBeats').addEventListener('change', updateRhythmDisplays);
+        document.getElementById('arpRhythmOffset').addEventListener('change', updateRhythmDisplays);
+
+        updateRhythmDisplays();
+        updateUiHeldNotesDisplay(); // Initialize UI notes display
+    </script>
+</body>
+</html>
