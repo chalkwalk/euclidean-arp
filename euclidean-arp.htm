@@ -82,6 +82,13 @@
             <option value="stableShuffled">Stable Shuffled</option>
         </select><br>
 
+        <label for="arpSyncMode">Arp Sync Mode:</label>
+        <select id="arpSyncMode">
+            <option value="free">Free Sync</option>
+            <option value="key">Key Sync</option>
+            <option value="transport">Transport Sync (Placeholder)</option>
+        </select><br>
+
         <input type="checkbox" id="enableMPE">
         <label for="enableMPE">Enable MPE Input</label><br>
 
@@ -160,6 +167,7 @@
         let mpeInputVoiceChannels = 8; // Number of MPE Input Voice Channels
         let mpeOutputMode = 'non-mpe'; // MPE Output Mode
         let mpeGlobalOutputChannel = '1'; // MPE Global Output Channel / Base Channel
+        let arpSyncMode = 'free'; // Default sync mode is Free Sync
 
         // State variables for different arp modes
         let upDownDirection = 1; // 1 for up, -1 for down, for upDown modes
@@ -174,6 +182,9 @@
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
         document.getElementById('arpMode').addEventListener('change', function() {
             arpMode = this.value;
+        });
+        document.getElementById('arpSyncMode').addEventListener('change', function() {
+            arpSyncMode = this.value;
         });
         document.getElementById('enableMPE').addEventListener('change', function() {
             isMPEEnabled = this.checked;
@@ -285,6 +296,10 @@
                     stableShuffleIndex = 0; // Reset index as notes changed
                     lastNotesToArp = [...notesToArp]; // Update last notes
                 }
+                // Key Sync: Start arp if it's in key sync mode and not already running
+                if (arpSyncMode === 'key' && !arpRunning) {
+                    startArpeggiator(); // Start the arpeggiator when the first note is pressed in Key Sync mode
+                }
             }
         }
 
@@ -299,6 +314,10 @@
                     stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                     stableShuffleIndex = 0; // Reset index as notes changed
                     lastNotesToArp = [...notesToArp]; // Update last notes
+                }
+                // Key Sync: Stop arp if it's in key sync mode and no notes are held
+                if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
+                    stopArpeggiator(); // Stop the arpeggiator when the last note is released in Key Sync mode
                 }
             }
         }
@@ -446,15 +465,21 @@
 
 
         function startArpeggiator() {
-            if (!midiOutput && heldNotes.length === 0) {
-                alert("No MIDI output device found and no notes selected. Please connect MIDI or select UI notes.");
-                return;
-            }
+            // if (!midiOutput && heldNotes.length === 0) {
+            //    alert("No MIDI output device found and no notes selected. Please connect MIDI or select UI notes.");
+            //    return;
+            // }
             let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use heldNotes directly, which now includes UI notes
-            if (notesToArp.length === 0) {
-                alert("Hold some notes or select UI notes to start the arpeggiator.");
-                return;
-            }
+
+            // For Key Sync, arpeggiator might start in noteOn, so this check might be redundant in some cases, but keep it for 'Free Sync' and button start.
+            // if (arpSyncMode !== 'key') {
+            //    if (notesToArp.length === 0) {
+            //        alert("Hold some notes or select UI notes to start the arpeggiator.");
+            //        return;
+            //    }
+            //}
+            if (arpRunning) return; // Prevent restart if already running
+
             // Sort notes for Up/Down, Converge/Diverge modes to work predictably
             notesToArp.sort((a, b) => a - b);
 
@@ -488,6 +513,7 @@
         }
 
         function stopArpeggiator() {
+            if (!arpRunning) return; // Prevent double stop
             arpRunning = false;
             clearInterval(arpInterval);
             document.getElementById('startButton').disabled = false;
@@ -503,13 +529,25 @@
             }
 
             let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use heldNotes directly
+            if (arpSyncMode === 'free' && notesToArp.length === 0) {
+                // In Free Sync mode, if no notes are held, advance rhythms silently
+                advanceArpRhythmIndex();
+                advancePatternIndex();
+                updatePlaybackDisplay('rest', null); // Indicate silent step in Free Sync
+                return; // Exit early, don't play notes
+            }
+
+
             if (arpMode === 'stableShuffled' && !arraysAreEqual(notesToArp, lastNotesToArp)) {
                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                 stableShuffleIndex = 0;
                 lastNotesToArp = [...notesToArp];
             }
-            if (notesToArp.length === 0) {
+            if (notesToArp.length === 0 && arpSyncMode !== 'free') { // For key sync or transport sync, stop if no notes
                 stopArpeggiator();
+                return;
+            } else if (notesToArp.length === 0 && arpSyncMode === 'free') {
+                // Free sync with no notes is handled above to advance silently
                 return;
             }
 
@@ -536,7 +574,6 @@
                         advancePatternIndex();
                         currentArpNoteIndex++;
                         if (arpMode === 'stableShuffled') stableShuffleIndex++;
-                        // stepType is NOT set for 'S' - it's not an output event
                     } else { // Error case
                         stepType = 'error';
                         patternEventProcessed = true;
@@ -550,7 +587,7 @@
                 stepType = 'error_arp_rhythm'; // For safety
             }
 
-            if (stepType !== null) { // Only update display if stepType is set (i.e., for 'note' or 'rest')
+            if (stepType !== null) { // Only update display if stepType is set (i.e., for 'note', 'rest' or 'skip')
                 updatePlaybackDisplay(stepType, (stepType === 'note') ? noteForStep : null);
             }
             advanceArpRhythmIndex();
@@ -579,7 +616,7 @@
         }
 
         function updatePlaybackDisplay(stepType, note) {
-            if (stepType === null) return; // Do not update display for null stepType (skips)
+            if (stepType === null) return; // Do not update display for null stepType
 
             const stepElem = document.createElement('div');
             stepElem.classList.add('playback-step');
@@ -589,7 +626,10 @@
                 stepElem.textContent = midiNoteToName(note).replace(/\d+/g, ''); // Display note name
             } else if (stepType === 'rest') {
                 stepElem.textContent = 'R';
-            } else if (stepType === 'error') {
+            } else if (stepType === 'skip') {
+                stepElem.textContent = 'S';
+            }
+            else if (stepType === 'error') {
                 stepElem.textContent = '!'; // Indicate error in playback
             }
 
