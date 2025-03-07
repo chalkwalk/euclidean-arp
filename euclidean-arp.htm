@@ -273,6 +273,16 @@
             <input type="range" id="octaves" value="1" min="1" max="4" step="1">
             <span id="octavesValue" class="number-display">1</span>
         </div>
+        <div class="slider-container">
+            <label for="baseVelocity">Base Velocity:</label>
+            <input type="range" id="baseVelocity" value="64" min="1" max="127" step="1">
+            <span id="baseVelocityValue" class="number-display">64</span>
+        </div>
+        <div class="slider-container">
+            <label for="maxVelocity">Max Velocity:</label>
+            <input type="range" id="maxVelocity" value="127" min="1" max="127" step="1">
+            <span id="maxVelocityValue" class="number-display">127</span>
+        </div>
     </div>
 
     <div class="playback-display" id="playbackDisplay"></div>
@@ -285,7 +295,7 @@
          * @fileoverview Euclidean MPE Arpeggiator Prototype
          * Implements a dual-layer Euclidean rhythm arpeggiator with MPE and MIDI support.
          * Features include customizable patterns and arp rhythms, various arpeggio modes,
-         * tempo sync options, and octave expansion.
+         * tempo sync options, and octave expansion. MPE and aftertouch/velocity mapping added.
          */
 
         // --- MIDI Variables ---
@@ -298,6 +308,7 @@
         let heldNotes = []; // Stores MIDI notes currently held, expanded by octave if needed, and sorted
         let heldNotesUI = new Set(); // Stores notes held by UI interaction
         let heldNotesMIDI = new Set(); // Stores notes held by MIDI input
+        let notePressures = new Map(); // Stores pressure values for each held MIDI note (for aftertouch/velocity)
 
         // --- Rhythm Pattern Variables ---
         let patternRhythm = []; // Euclidean rhythm for note pattern (Note/Skip)
@@ -342,6 +353,8 @@
 
         // --- Octave Expansion ---
         let octaveCount = 1;
+        let baseVelocityValue = 64; // Default base velocity
+        let maxVelocityValue = 127; // Default max velocity
 
 
         /**
@@ -482,6 +495,24 @@
             chordNValue = parseInt(this.value);
             document.getElementById('chordNValueDisplay').textContent = chordNValue;
             updateModeNoteList(); // Re-generate note list when N changes
+        });
+
+        /**
+         * Event listener for changes to the Base Velocity slider.
+         * Updates the base velocity value.
+         */
+        document.getElementById('baseVelocity').addEventListener('input', function() {
+            baseVelocityValue = parseInt(this.value);
+            document.getElementById('baseVelocityValue').textContent = baseVelocityValue;
+        });
+
+        /**
+         * Event listener for changes to the Max Velocity slider.
+         * Updates the max velocity value.
+         */
+        document.getElementById('maxVelocity').addEventListener('input', function() {
+            maxVelocityValue = parseInt(this.value);
+            document.getElementById('maxVelocityValue').textContent = maxVelocityValue;
         });
 
 
@@ -635,6 +666,7 @@
                 updatePianoKeyboardUI(note, 'midi');
             }
 
+            notePressures.set(note, 64); // Initialize pressure for new note to default (64)
             updateHeldNotesDisplay();
 
             if (arpSyncMode === 'key' && !arpRunning) {
@@ -691,6 +723,7 @@
                 updatePianoKeyboardUI(note, heldNotesUI.has(note) ? 'ui' : null);
             }
 
+            notePressures.delete(note); // Remove pressure data for released note
             updateHeldNotesDisplay();
 
             if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
@@ -848,12 +881,12 @@
          * --- Arpeggio Mode Note List Generators ---
          * These functions generate the ordered list of notes based on the selected arpeggio mode.
          */
-         
+
          /** @returns {number[]} - Notes transformed to an alternating sequence. */
          function generateAlternatingVariant(notes) {
              return [...notes, ...notes.reverse().slice(1, -1)];
          }
-         
+
          /** @returns {number[]} - Notes transformed to an inclusive alternating sequence. */
          function generateInclusiveAlternatingVariant(notes) {
          	return [...notes, ...notes.reverse()];
@@ -908,7 +941,7 @@
             }
             return divergeList;
         }
-        
+
         /**
          * @returns {number[]} - Notes in converge-diverge sequence, excluding repeated end notes.
          */
@@ -1186,7 +1219,7 @@
         }
 
         /**
-         * Handles incoming MIDI messages. Processes note on/off and MIDI clock messages.
+         * Handles incoming MIDI messages. Processes note on/off, MIDI clock messages, and aftertouch/pressure.
          * @param {MIDIMessageEvent} message - MIDI message event.
          */
         function onMIDIMessage(message) {
@@ -1194,6 +1227,7 @@
             const channel = command & 0x0F;
             const note = message.data[1];
             const velocity = (message.data.length > 2) ? message.data[2] : 0;
+            const pressure = velocity; // Velocity byte is used for pressure in aftertouch messages
 
             if (command === 248) { // MIDI Clock Tick - 0xF8 (248 in decimal)
                 handleMIDITick();
@@ -1221,6 +1255,17 @@
                     }
                 } else if (command >= 128 && command < 144 || (command >= 144 && command < 160 && velocity === 0)) { // Note Off or Note On with velocity 0
                     noteOff(note, 'midi');
+                } else if (command >= 160 && command < 176) { // Polyphonic Aftertouch (0xA0-0xAF)
+                    if (notePressures.has(note)) {
+                        notePressures.set(note, pressure);
+                    }
+                } else if (command >= 208 && command < 224) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
+                    // Apply channel pressure to all currently held MIDI notes
+                    heldNotesMIDI.forEach(heldNote => {
+                        if (notePressures.has(heldNote)) {
+                            notePressures.set(heldNote, pressure);
+                        }
+                    });
                 }
             }
         }
@@ -1356,17 +1401,21 @@
 
         /**
          * Sends a MIDI note on and note off message for a given note.
-         * Respects MPE output mode and channel settings.
+         * Respects MPE output mode and channel settings and applies velocity based on aftertouch.
          * @param {number} note - MIDI note number to play.
          */
         function playNote(note) {
             if (midiOutput) {
                 let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
+                let pressure = notePressures.get(note) || 0; // Get pressure, default to 0 if not found
+                let velocity = baseVelocityValue + (maxVelocityValue - baseVelocityValue) * (pressure / 127);
+                velocity = Math.round(velocity); // Ensure velocity is an integer
+
                 if (mpeOutputMode === 'mpe') {
-                    midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, 100]); // Pitch Bend, Note On
+                    midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, velocity]); // Pitch Bend, Note On with velocity
                     setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, 50); // Note Off
                 } else {
-                    midiOutput.send([0x90 + outputChannel, note, 100]); // Note On
+                    midiOutput.send([0x90 + outputChannel, note, velocity]); // Note On with velocity
                     setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, 50); // Note Off
                 }
             }
@@ -1380,10 +1429,13 @@
             if (midiOutput) {
                 let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
                 for (const note of notes) {
+                    let pressure = notePressures.get(note) || 64; // Get pressure for each note, default to 64 if not found
+                    let velocity = baseVelocityValue + (maxVelocityValue - baseVelocityValue) * (pressure / 127);
+                    velocity = Math.round(velocity); // Ensure velocity is an integer
                     if (mpeOutputMode === 'mpe') {
-                        midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, 100]); // Pitch Bend, Note On
+                        midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, velocity]); // Pitch Bend, Note On with velocity
                     } else {
-                        midiOutput.send([0x90 + outputChannel, note, 100]); // Note On
+                        midiOutput.send([0x90 + outputChannel, note, velocity]); // Note On with velocity
                     }
                 }
                 setTimeout(() => {
@@ -1640,6 +1692,14 @@
             document.getElementById('chordNValueDisplay').textContent = chordNValue;
             updateModeNoteList(); // Update note list when chordN value changes
         });
+        document.getElementById('baseVelocity').addEventListener('input', function() {
+            baseVelocityValue = parseInt(this.value);
+            document.getElementById('baseVelocityValue').textContent = baseVelocityValue;
+        });
+        document.getElementById('maxVelocity').addEventListener('input', function() {
+            maxVelocityValue = parseInt(this.value);
+            document.getElementById('maxVelocityValue').textContent = maxVelocityValue;
+        });
 
 
         // --- Initialization ---
@@ -1647,6 +1707,9 @@
         updateRhythmDisplays();
         updateModeNoteList(); // Initial note list generation on load
         document.getElementById('chordNValueDisplay').textContent = chordNValue; // Initialize ChordN display
+        document.getElementById('baseVelocityValue').textContent = baseVelocityValue; // Initialize Base Velocity display
+        document.getElementById('maxVelocityValue').textContent = maxVelocityValue; // Initialize Max Velocity display
+
 
     </script>
 </body>
