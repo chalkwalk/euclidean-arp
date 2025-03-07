@@ -27,6 +27,12 @@
             border-color: #bbb;       /* Lighter border */
             color: #999;              /* Lighter text color */
         }
+        /* --- NEW GATE FLEX STYLE --- */
+        .rhythm-step.gate-extended-step {
+            background-color: #cceeff; /* Light blue for gate extension */
+            border-color: #aaccdd;
+        }
+
 
         .parameter-group { margin-bottom: 10px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; /* Added border and padding to parameter groups */ background-color: #fafafa; /* Lighter background for parameter groups */ }
         .parameter-group h3 { margin-top: 0; color: #555; /* Slightly darker heading text */ }
@@ -554,7 +560,6 @@
                     </select>
                 </div>
 
-
                 <div class="slider-container" title="Number of octaves to expand held notes across.">
                     <label for="octaves">Octaves:</label>
                     <input type="range" id="octaves" value="1" min="1" max="4" step="1" title="Expand the range of arpeggiated notes by adding octaves above the held notes.">
@@ -574,6 +579,11 @@
                     <label for="gateLength">Gate Length (%):</label>
                     <input type="range" id="gateLength" value="50" min="1" max="150" step="1" title="Adjust the gate length of arpeggiated notes as a percentage of the clock division duration.">
                     <span id="gateLengthValue" class="number-display">50</span>
+                </div>
+                <!-- --- NEW Gate Flex Checkbox --- -->
+                <div class="slider-container" title="Enable gate flex to extend note gates based on rhythm density.">
+                    <input type="checkbox" id="enableGateFlex" title="Enable Gate Flex to make gates longer before rests.">
+                    <label for="enableGateFlex" style="text-align: left; width: auto;">Enable Gate Flex</label>
                 </div>
             </fieldset>
         </div>
@@ -597,6 +607,7 @@
          * Implements a dual-layer Euclidean rhythm arpeggiator with MPE and MIDI support.
          * Features include customizable patterns and arp rhythms, various arpeggio modes,
          * tempo sync options, and octave expansion. MPE and aftertouch/velocity mapping added.
+         * Gate Flex feature added.
          */
 
         // --- Utility Functions ---
@@ -641,6 +652,7 @@
         // --- Rhythm Pattern Variables ---
         let patternRhythm = []; // Euclidean rhythm for note pattern (Note/Skip)
         let rhythm = [];     // Euclidean rhythm for arpeggio rhythm (Beat/Rest)
+        let rhythmGateMultipliers = []; // NEW: Array to store gate multipliers for rhythm
         // --- NEW Rhythm Enable Flags ---
         let isPatternDisabled = false;
         let isRhythmDisabled = false;
@@ -665,6 +677,8 @@
         let subArpScalePercentage = 0; // Default sub arp scale
         let subArpMode = 'up';         // Default sub arp mode
 
+        // --- Gate Flex ---
+        let isGateFlexEnabled = false; // NEW: Enable/disable gate flex
 
         // --- MPE and MIDI Channel Settings ---
         let isMPEEnabled = false;
@@ -837,6 +851,11 @@
             updateRhythmDisplays(); // Update rhythm display to reflect enabled/disabled state
             updateRhythmControlsState(); // Update rhythm controls enabled/disabled state
         });
+        // --- NEW Event Listener for Gate Flex Checkbox ---
+        document.getElementById('enableGateFlex').addEventListener('change', function() {
+            isGateFlexEnabled = this.checked;
+        });
+
 
         // --- TAB SWITCHING ---
         document.querySelectorAll('.tab-button').forEach(button => {
@@ -961,12 +980,14 @@
         function generateOctaveExpandedNotes(inputNotes, octaves) {
             const expandedNotes = [];
             const seenNotes = new Set();
+            octaveExpandedNoteMap.clear();
             for (let i = 0; i < octaves; i++) {
                 for (const originalNote of inputNotes) {
                     const expandedNote = originalNote + (12 * i);
                     if (!seenNotes.has(expandedNote)) {
                         expandedNotes.push(expandedNote);
                         seenNotes.add(expandedNote);
+                        octaveExpandedNoteMap.set(expandedNote, originalNote);
                     }
                 }
             }
@@ -1209,6 +1230,29 @@
         }
 
         /**
+         * NEW: Generates an array of gate multipliers based on the rhythm array.
+         * @param {string[]} rhythmArray - Array of rhythm events ('B' for beat, 'R' for rest).
+         * @returns {number[]} - Array of gate multipliers, 0 for rests, steps to next beat for beats.
+         */
+        function generateRhythmGateMultipliers(rhythmArray) {
+            const multipliers = new Array(rhythmArray.length).fill(0);
+            for (let i = 0; i < rhythmArray.length; i++) {
+                if (rhythmArray[i] === RHYTHM_BEAT) {
+                    let stepsToNextBeat = 1;
+                    let currentIndex = (i + 1) % rhythmArray.length;
+                    while (currentIndex !== i && rhythmArray[currentIndex] !== RHYTHM_BEAT) {
+                        stepsToNextBeat++;
+                        currentIndex = (currentIndex + 1) % rhythmArray.length;
+                    }
+                    if (stepsToNextBeat > rhythmArray.length) stepsToNextBeat = 1; // Failsafe - should not happen in valid rhythms
+                    multipliers[i] = stepsToNextBeat;
+                }
+            }
+            return multipliers;
+        }
+
+
+        /**
          * Updates both pattern and arpeggio rhythm displays based on slider values and enabled states.
          */
         function updateRhythmDisplays() {
@@ -1237,6 +1281,8 @@
             document.getElementById('rhythmStepsValue').textContent = rhythmSteps;
             document.getElementById('rhythmBeatsValue').textContent = rhythmBeats;
             document.getElementById('rhythmOffsetValue').textContent = rhythmOffset;
+
+            rhythmGateMultipliers = generateRhythmGateMultipliers(rhythm); // NEW: Generate gate multipliers
 
             patternBeatsSlider.max = patternSteps;
             rhythmBeatsSlider.max = rhythmSteps;
@@ -2015,7 +2061,14 @@
          */
         function sendMidiNote(note, velocity, outputChannel) {
             if (midiOutput) {
-                const gateDurationMs = (clockDivisionDurationMs * gateLengthPercentage) / 100; // Calculate gate length in ms
+                let gateDurationMs = (clockDivisionDurationMs * gateLengthPercentage) / 100; // Default gate length
+                if (isGateFlexEnabled) { // NEW: Gate Flex Logic
+                    const gateMultiplier = rhythmGateMultipliers[currentRhythmIndex];
+                    if (gateMultiplier > 0) { // Only extend gate if multiplier > 0 (not a rest step)
+                        gateDurationMs = (clockDivisionDurationMs * gateLengthPercentage * gateMultiplier) / 100; // Extended gate
+                    }
+                }
+
                 if (mpeOutputMode === 'mpe') {
                     midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, velocity]); // Pitch Bend, Note On with velocity
                     setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, gateDurationMs); // Note Off with calculated delay
@@ -2223,12 +2276,22 @@
          * Unhighlights any previously highlighted step in the same rhythm display.
          * @param {string} displayElementId - ID of the rhythm display ('patternDisplay' or 'rhythmDisplay').
          * @param {number} stepIndex - Index of the step to highlight.
+         * @param {number} gateExtension - Number of steps to extend the gate highlight over (for gate flex).
          */
-        function highlightRhythmStep(displayElementId, stepIndex) {
+        function highlightRhythmStep(displayElementId, stepIndex, gateExtension = 0) {
             unhighlightRhythmStep(displayElementId);
             const stepElement = document.getElementById(`${displayElementId}-step-${stepIndex}`);
             if (stepElement) {
                 stepElement.classList.add('current-step');
+            }
+            if (isGateFlexEnabled && displayElementId === 'rhythmDisplay' && gateExtension > 1) { // Gate flex highlight
+                for (let i = 1; i < gateExtension; i++) {
+                    const extendedStepIndex = (stepIndex + i) % rhythm.length;
+                    const extendedStepElement = document.getElementById(`${displayElementId}-step-${extendedStepIndex}`);
+                    if (extendedStepElement) {
+                        extendedStepElement.classList.add('gate-extended-step');
+                    }
+                }
             }
         }
 
@@ -2241,6 +2304,8 @@
             if (currentHighlighted) {
                 currentHighlighted.classList.remove('current-step');
             }
+            const gateExtendedSteps = (displayElementId === 'rhythmDisplay') ? document.querySelectorAll('#rhythmDisplay .rhythm-step.gate-extended-step') : [];
+            gateExtendedSteps.forEach(step => step.classList.remove('gate-extended-step'));
         }
 
         /** Highlights the current step in the pattern rhythm display, only if not disabled. */
@@ -2253,7 +2318,7 @@
         /** Highlights the current step in the arpeggio rhythm display, only if not disabled. */
         function highlightCurrentArpRhythmStep() {
             if (!isRhythmDisabled) { // NEW: Check if rhythm is disabled
-                highlightRhythmStep('rhythmDisplay', currentRhythmIndex);
+                highlightRhythmStep('rhythmDisplay', currentRhythmIndex, isGateFlexEnabled ? rhythmGateMultipliers[currentRhythmIndex] : 0); // Pass gate extension if enabled
             }
         }
 
