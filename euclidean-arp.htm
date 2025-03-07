@@ -19,12 +19,28 @@
         .playback-step.note { background-color: lightyellow; }
         .playback-step.rest { background-color: lightcoral; }
         .playback-step.skip { background-color: lightblue; }
+        .device-selector { margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <h1>Euclidean MPE Arpeggiator Prototype</h1>
 
     <div id="midiStatus">MIDI Status: Not connected</div>
+
+    <div class="device-selector">
+        <label for="midiInputSelect">MIDI Input Device:</label>
+        <select id="midiInputSelect">
+            <option value="">No input device selected</option>
+        </select>
+    </div>
+
+    <div class="device-selector">
+        <label for="midiOutputSelect">MIDI Output Device:</label>
+        <select id="midiOutputSelect">
+            <option value="">No output device selected</option>
+        </select>
+    </div>
+
 
     <div class="held-notes-display">
         <strong>Held MIDI Notes:</strong> <span id="heldNotes"></span>
@@ -151,6 +167,7 @@
     <script>
         let midiAccess;
         let midiOutput;
+        let midiInput; // Variable to store selected MIDI input
         let heldNotes = []; // Notes from MIDI input and UI buttons
         let patternRhythm = [];
         let arpRhythm = [];
@@ -227,19 +244,66 @@
             midiAccess = midi;
             document.getElementById('midiStatus').innerText = "MIDI Status: Connected";
 
+            const inputSelect = document.getElementById('midiInputSelect');
+            const outputSelect = document.getElementById('midiOutputSelect');
+
+            // Populate MIDI input select
             const inputs = midiAccess.inputs.values();
             for (let input = inputs.next(); input && !input.done; input = inputs.next()) {
-                input.value.onmidimessage = onMIDIMessage;
+                const option = document.createElement('option');
+                option.value = input.value.id;
+                option.text = input.value.name || 'MIDI Input ' + inputSelect.options.length;
+                inputSelect.appendChild(option);
             }
 
+            // Populate MIDI output select
             const outputs = midiAccess.outputs.values();
             for (let output = outputs.next(); output && !output.done; output = outputs.next()) {
-                midiOutput = output.value;
-                break;
+                const option = document.createElement('option');
+                option.value = output.value.id;
+                option.text = output.value.name || 'MIDI Output ' + outputSelect.options.length;
+                outputSelect.appendChild(option);
             }
-             if (!midiOutput) {
-                document.getElementById('midiStatus').innerText = "MIDI Status: No MIDI output device found.";
+
+            // Select first input and output if available
+            if (inputSelect.options.length > 1) {
+                inputSelect.selectedIndex = 1; // Select the first device, skipping "No input device selected"
+                midiInput = midiAccess.inputs.get(inputSelect.options[1].value);
+                midiInput.onmidimessage = onMIDIMessage;
             }
+
+            if (outputSelect.options.length > 1) {
+                outputSelect.selectedIndex = 1; // Select the first device, skipping "No output device selected"
+                midiOutput = midiAccess.outputs.get(outputSelect.options[1].value);
+            } else {
+                document.getElementById('midiStatus').innerText += " No MIDI output device found.";
+            }
+
+            // Input device change listener
+            inputSelect.addEventListener('change', function() {
+                const selectedInputId = this.value;
+                if (midiInput) {
+                    midiInput.onmidimessage = null; // Remove listener from previous input
+                }
+                if (selectedInputId) {
+                    midiInput = midiAccess.inputs.get(selectedInputId);
+                    midiInput.onmidimessage = onMIDIMessage; // Add listener to new input
+                } else {
+                    midiInput = null; // No input device selected
+                }
+            });
+
+            // Output device change listener
+            outputSelect.addEventListener('change', function() {
+                const selectedOutputId = this.value;
+                if (selectedOutputId) {
+                    midiOutput = midiAccess.outputs.get(selectedOutputId);
+                } else {
+                    midiOutput = null; // No output device selected
+                }
+            });
+
+
         }
 
         function onMIDIFailure() {
