@@ -251,6 +251,12 @@
             <option value="15">Channel 15</option>
             <option value="16">Channel 16</option>
         </select>
+
+        <div class="slider-container"> <!-- New Octaves Slider -->
+            <label for="octaves">Octaves:</label>
+            <input type="range" id="octaves" value="1" min="1" max="4" step="1">
+            <span id="octavesValue" class="number-display">1</span>
+        </div>
     </div>
 
     <div class="playback-display" id="playbackDisplay"></div>
@@ -263,6 +269,7 @@
         let midiOutput;
         let midiInput;
         let heldNotes = [];
+        let rawHeldNotes = []; // NEW: To store original held notes
         let heldNotesUI = new Set();
         let heldNotesMIDI = new Set();
         let patternRhythm = [];
@@ -304,6 +311,7 @@
         let highlightedPatternStep = null;
         let highlightedArpRhythmStep = null;
         let highlightedPianoKey = null;
+        let octaveCount = 1; // NEW: Octave count, default to 1
 
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
@@ -331,6 +339,14 @@
         document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() {
             mpeGlobalOutputChannel = this.value;
         });
+        document.getElementById('octaves').addEventListener('input', function() { // NEW: Octave slider listener
+            octaveCount = parseInt(this.value);
+            document.getElementById('octavesValue').textContent = octaveCount;
+            heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount); // Re-generate held notes on octave change
+            updateHeldNotesDisplay();
+            updateModeNoteList();
+        });
+
 
         // New Event listeners for tempo controls
         document.getElementById('tempoSource').addEventListener('change', function() {
@@ -430,68 +446,42 @@
             document.getElementById('midiStatus').innerText = "MIDI Status: MIDI access failed.";
         }
 
-        function onMIDIMessage(message) {
-            const command = message.data[0];
-            const channel = command & 0x0F; // Extract MIDI channel (lower 4 bits)
-            const note = message.data[1];
-            const velocity = (message.data.length > 2) ? message.data[2] : 0;
 
-            // MIDI Clock Tick - 0xF8 (248 in decimal)
-            if (command === 248) {
-                handleMIDITick();
-                return; // Important: Exit to prevent tick from being processed as note message
+        function generateOctaveExpandedNotes(rawNotes, octaves) { // NEW: Octave expansion function
+            if (octaves <= 1) {
+                return [...new Set(rawNotes)].sort((a, b) => a - b); // No expansion, just unique and sorted
             }
-
-
-            let processMessage = false;
-
-            if (isMPEEnabled) {
-                if (mpeGlobalInputChannel === 'omni') {
-                    processMessage = true; // Process all channels in Omni mode (for now, refine MPE channel range later if needed)
-                } else {
-                    const globalChannel = parseInt(mpeGlobalInputChannel);
-                    const voiceChannelCount = mpeInputVoiceChannels;
-                    if (channel + 1 >= globalChannel + 1 && channel + 1 <= globalChannel + voiceChannelCount) { // Check if channel is within MPE voice channel range
-                        processMessage = true;
-                    } else if (channel + 1 === globalChannel) { // Optionally process global channel messages too, if needed, for now ignoring.
-                        // processMessage = true;
-                    }
+            let expandedNotes = [];
+            for (const note of rawNotes) {
+                for (let i = 0; i < octaves; i++) {
+                    expandedNotes.push(note + (12 * i));
                 }
-            } else {
-                processMessage = true; // Process all messages if MPE is disabled (or refine to channel 1 later if needed)
             }
-
-
-            if (processMessage) {
-                if (command >= 144 && command < 160) { // Note On
-                    if (velocity > 0) {
-                        noteOn(note, 'midi'); // Indicate MIDI source
-                    } else {
-                        noteOff(note, 'midi'); // Indicate MIDI source
-                    }
-                } else if (command >= 128 && command < 144 || (command >= 144 && command < 160 && velocity === 0)) { // Note Off
-                    noteOff(note, 'midi'); // Indicate MIDI source
-                }
-                // In future, handle MPE specific messages (pitch bend, CC74, pressure) here if needed based on isMPEEnabled and selected channel
-            }
+            return [...new Set(expandedNotes)].sort((a, b) => a - b); // Unique and sorted expanded notes
         }
+
 
         function noteOn(note, source = 'ui') {
             if (source === 'ui') {
                 if (!heldNotesUI.has(note)) {
                     heldNotesUI.add(note);
+                    rawHeldNotes.push(note); // Add to raw held notes
                 } else {
                     heldNotesUI.delete(note); // Toggle off if already on
+                    const indexToRemove = rawHeldNotes.indexOf(note); // Remove from raw held notes as well
+                    if (indexToRemove > -1) {
+                        rawHeldNotes.splice(indexToRemove, 1);
+                    }
                 }
-                // Update heldNotes from both sources
-                heldNotes = Array.from(new Set([...heldNotesUI, ...heldNotesMIDI])).sort((a, b) => a - b);
+                 heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount); // Update heldNotes from raw and octave setting
                 updatePianoKeyboardUI(note, heldNotesUI.has(note) ? 'ui' : null); // Update UI key style
             } else if (source === 'midi') {
                 if (!heldNotesMIDI.has(note)) {
                     heldNotesMIDI.add(note);
+                    rawHeldNotes.push(note); // Add to raw held notes
                 }
                 // heldNotesUI takes precedence if both UI and MIDI hold the same note, in terms of visual representation.
-                heldNotes = Array.from(new Set([...heldNotesUI, ...heldNotesMIDI])).sort((a, b) => a - b);
+                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount); // Update heldNotes from raw and octave setting
                 updatePianoKeyboardUI(note, 'midi'); // Update UI key style for MIDI
             }
 
@@ -530,8 +520,12 @@
                 // UI note-off is handled in noteOn toggle logic
             } else if (source === 'midi') {
                 heldNotesMIDI.delete(note);
-                // Update heldNotes from both sources
-                heldNotes = Array.from(new Set([...heldNotesUI, ...heldNotesMIDI])).sort((a, b) => a - b);
+                const indexToRemove = rawHeldNotes.indexOf(note);
+                if (indexToRemove > -1) {
+                    rawHeldNotes.splice(indexToRemove, 1); // Remove from raw held notes on MIDI note off
+                }
+                // Update heldNotes from raw held notes and octave setting
+                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
                 updatePianoKeyboardUI(note, heldNotesUI.has(note) ? 'ui' : null); // Update UI key style, check if UI still holds it
             }
 
@@ -1061,7 +1055,7 @@
             stepElem.classList.add(stepType); // Add class for step type styling
 
             if (stepType === 'note' && note !== null) {
-                stepElem.textContent = midiNoteToName(note).replace(/\d+/g, ''); // Display note name
+                stepElem.textContent = midiNoteToName(note); //.replace(/\d+/g, ''); // Display note name without octave
             } else if (stepType === 'rest') {
                 stepElem.textContent = 'R';
             } else if (stepType === 'skip') {
@@ -1194,6 +1188,7 @@
         const arpRhythmStepsSlider = document.getElementById('arpRhythmSteps');
         const arpRhythmBeatsSlider = document.getElementById('arpRhythmBeats');
         const arpRhythmOffsetSlider = document.getElementById('arpRhythmOffset');
+        const octavesSlider = document.getElementById('octaves'); // NEW: Octaves slider
 
         patternStepsSlider.addEventListener('input', updateRhythmDisplays);
         patternBeatsSlider.addEventListener('input', updateRhythmDisplays);
@@ -1222,6 +1217,7 @@
             updateModeNoteList(); // NEW: Update note list on mode change - duplicated above for clarity
             currentArpNoteIndex = 0; // Reset index on mode change - duplicated above for clarity
         });
+
 
         generatePianoKeyboardUI();
         updateRhythmDisplays();
