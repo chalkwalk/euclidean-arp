@@ -58,14 +58,17 @@
         .key.key-held-ui {
             background-color: #aaddff; /* Distinct light blue for UI held keys */
             color: black; /* Ensure text is readable on highlight */
+            border-bottom: unset;
         }
         .key.key-held-midi {
             background-color: #aaffaa; /* Distinct light green for MIDI held keys */
             color: black; /* Ensure text is readable on highlight */
+            border-bottom: unset;
         }
-        key.key-current { /* New class for current key highlight */
-            border: 2px solid blue; /* Example highlight style */
+        .key.key-current {
+            border: 2px solid #ccc; /* Example highlight style */
             background-color: #ffddaa; /* Softer yellow for current note highlight */
+            border-bottom: unset;
         }
 
         /* --- NEW PLAYBACK KEYBOARD STYLES --- */
@@ -102,17 +105,21 @@
         }
         .playback-key.key-held-ui { /* Style for UI held notes on playback keyboard */
             background-color: #99ccee; /* Lighter shade of blue */
+            border-bottom: unset;
         }
         .playback-key.key-held-midi { /* Style for MIDI held notes on playback keyboard */
             background-color: #ccffcc; /* Lighter shade of green */
+            border-bottom: unset;
         }
         .playback-key.key-held-octave-expanded { /* New style for octave-expanded notes */
             background-color: #cceeff; /* A very light blue/grey, less prominent than UI/MIDI held */
             color: black; /* Ensure text is readable if you decide to add text to these keys */
+            border-bottom: unset;
         }
         .playback-key.key-current { /* Style for currently playing notes on playback keyboard */
             background-color: #ffddaa; /* Very light yellow */
             border: 1px solid #ccc; /* Add border to current key on playback keyboard */
+            border-bottom: unset;
         }
         .playback-display { display: flex; overflow-x: hidden; border: 1px solid #ccc; height: 30px; margin-bottom: 10px; background-color: #eee; border-radius: 3px; /* Added background and border-radius to playback display */ padding-left: 5px; }
         .playback-step {
@@ -153,13 +160,24 @@
             color: #777; /* Muted number display color */
         }
 
-        #tempoDisplay {
+        #tempoBPM { /* Tempo BPM input now serves as display as well */
             display: inline-block;
             margin-left: 10px;
             font-weight: bold;
             font-size: 1.2em; /* Larger tempo display */
             color: #333; /* Darker tempo text */
+            border: none; /* Remove border */
+            background-color: transparent; /* Make background transparent */
+            width: auto; /* Adjust width to content */
+            padding: 0; /* Remove padding */
+            text-align: left; /* Align text left */
         }
+        #tempoBPM:read-only { /* Style for read-only state */
+            cursor: default; /* Default cursor for read-only */
+            color: #777; /* Muted color when read-only */
+            font-weight: normal; /* Normal font weight when read-only */
+        }
+
         #midiStatus {
             margin-bottom: 10px;
             font-size: 0.9em;
@@ -306,8 +324,8 @@
                 </div>
 
                 <div class="slider-container" title="Tempo in Beats Per Minute (BPM). Only active when Tempo Source is Internal.">
-                    <label for="tempoBPM">Tempo (BPM):</label>
-                    <input type="number" id="tempoBPM" value="120" min="10" max="300" title="Set the tempo in BPM for internal clock."> <span id="tempoDisplay">120 BPM (Internal)</span>
+                    <label for="tempoBPM">Tempo:</label>
+                    <input type="number" id="tempoBPM" value="120" min="10" max="300" title="Set the tempo in BPM for internal clock.">
                 </div>
 
                 <div class="slider-container" title="Enable or disable MPE input processing.">
@@ -545,10 +563,31 @@
          * tempo sync options, and octave expansion. MPE and aftertouch/velocity mapping added.
          */
 
+        // --- Utility Functions ---
+        /**
+         * Helper function to compare if two arrays are equal.
+         * @param {array} arr1
+         * @param {array} arr2
+         * @returns {boolean}
+         */
+        function arraysAreEqual(arr1, arr2) {
+            if (arr1.length !== arr2.length) return false;
+            for (let i = 0; i < arr1.length; i++) {
+                if (arr1[i] !== arr2[i]) return false;
+            }
+            return true;
+        }
+
         // --- MIDI Variables ---
         let midiAccess = null;
         let midiOutput = null;
         let midiInput = null;
+
+        // --- Rhythm Event Constants ---
+        const RHYTHM_BEAT = 'B';
+        const RHYTHM_REST = 'R';
+        const PATTERN_NOTE = 'N';
+        const PATTERN_SKIP = 'S';
 
         // --- Note Arrays and Sets ---
         let rawHeldNotes = []; // Stores original held notes, before octave expansion
@@ -599,7 +638,7 @@
         let clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision); // Ticks per step based on clock division
         let internalClockInterval = null;
         let clockDivisionDurationMs = 0; // Duration of one clock division in milliseconds
-        let tempoDisplayElem = document.getElementById('tempoDisplay'); // Tempo display element
+        const tempoBPMInput = document.getElementById('tempoBPM'); // Tempo BPM input element (now also display)
 
         // --- MIDI Clock Tick History ---
         const tickHistorySize = 24; // Store up to 24 ticks (one quarter note)
@@ -691,7 +730,7 @@
                 updateTempoDisplay('External MIDI Clock'); // Update display immediately when switching to external
             }
         });
-        document.getElementById('tempoBPM').addEventListener('change', function() {
+        tempoBPMInput.addEventListener('change', function() { // Event listener for BPM input change
             bpm = parseInt(this.value);
             if (tempoSource === 'internal') {
                 setupInternalClock();
@@ -761,7 +800,9 @@
             if (!source) {
                 source = tempoSource === 'internal' ? 'Internal' : 'External MIDI Clock';
             }
-            tempoDisplayElem.textContent = `${bpm} BPM (${source})`;
+            tempoBPMInput.value = bpm; // Update the input field's value
+            tempoBPMInput.title = `Tempo (BPM): ${source === 'Internal' ? 'Editable' : 'Controlled by external MIDI clock'}`; // Update tooltip
+            tempoBPMInput.readOnly = source !== 'Internal'; // Set read-only state based on source
         }
 
 
@@ -904,7 +945,7 @@
 
             if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
                 if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive', 'walk', 'normalWalk'].includes(arpMode)) {
-                    currentNoteIndex = findClosestNoteIndex(previousModeNoteList[previousNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newNoteList, previousNoteIndexVal);
+                    currentNoteIndex = findClosestNoteIndex(previousModeNoteList[previousNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousNoteIndexVal);
                 } else {
                     currentNoteIndex = (currentNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
                     if (!currentNoteIndex) currentNoteIndex = 0;
@@ -1096,7 +1137,7 @@
             const patternSteps = parseInt(patternStepsSlider.value);
             const patternBeats = parseInt(patternBeatsSlider.value);
             const patternOffset = parseInt(patternOffsetSlider.value);
-            patternRhythm = generateEuclideanRhythm(patternSteps, patternBeats, patternOffset, 'N', 'S');
+            patternRhythm = generateEuclideanRhythm(patternSteps, patternBeats, patternOffset, PATTERN_NOTE, PATTERN_SKIP);
             displayRhythm(patternRhythm, 'patternDisplay');
             document.getElementById('patternStepsValue').textContent = patternSteps;
             document.getElementById('patternBeatsValue').textContent = patternBeats;
@@ -1106,7 +1147,7 @@
             const rhythmSteps = parseInt(rhythmStepsSlider.value);
             const rhythmBeats = parseInt(rhythmBeatsSlider.value);
             const rhythmOffset = parseInt(rhythmOffsetSlider.value);
-            rhythm = generateEuclideanRhythm(rhythmSteps, rhythmBeats, rhythmOffset, 'B', 'R');
+            rhythm = generateEuclideanRhythm(rhythmSteps, rhythmBeats, rhythmOffset, RHYTHM_BEAT, RHYTHM_REST);
             displayRhythm(rhythm, 'rhythmDisplay');
             document.getElementById('rhythmStepsValue').textContent = rhythmSteps;
             document.getElementById('rhythmBeatsValue').textContent = rhythmBeats;
@@ -1140,10 +1181,10 @@
                 stepElement.classList.add('rhythm-step');
                 stepElement.innerText = event; // Keep text for now, could be removed for pure graphical display
                 stepElement.id = `${displayElementId}-step-${index}`;
-                if (event === 'B') stepElement.classList.add('beat');
-                else if (event === 'R') stepElement.classList.add('rest');
-                else if (event === 'S') stepElement.classList.add('skip');
-                else if (event === 'N') stepElement.classList.add('note');
+                if (event === RHYTHM_BEAT) stepElement.classList.add('beat');
+                else if (event === RHYTHM_REST) stepElement.classList.add('rest');
+                else if (event === PATTERN_SKIP) stepElement.classList.add('skip');
+                else if (event === PATTERN_NOTE) stepElement.classList.add('note');
                 displayElement.appendChild(stepElement);
             });
         }
@@ -1480,7 +1521,7 @@
             startButton.classList.remove('playing'); // Ensure 'Start' button doesn't show 'playing' state
             allNotesOff();
             unhighlightCurrentStep();
-            unhighlightPlaybackPianoKeyboardCurrentNote();
+            unhighlightPlaybackPianoKeys();
         }
 
         /**
@@ -1613,7 +1654,7 @@
             }
 
             unhighlightCurrentStep();
-            unhighlightPlaybackPianoKeyboardCurrentNote();
+            unhighlightPlaybackPianoKeys();
 
             let notesToArp = heldNotes.length > 0 ? heldNotes : [];
             if (arpSyncMode === 'free' && notesToArp.length === 0) {
@@ -1648,24 +1689,24 @@
 
             const currentRhythmEvent = rhythm[currentRhythmIndex];
 
-            if (currentRhythmEvent === 'B') { // Beat in Rhythm
+            if (currentRhythmEvent === RHYTHM_BEAT) { // Beat in Rhythm
                 let patternEventProcessed = false;
                 while (!patternEventProcessed) {
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
-                    if (currentPatternEvent === 'N') { // Note in Pattern
+                    if (currentPatternEvent === PATTERN_NOTE) { // Note in Pattern
                         if (arpMode === 'chord' || arpMode === 'chordN') { // Chord Mode Logic
                             if (currentModeNoteList.length > 0) {
                                 let chordToPlay = [];
                                 if (arpMode === 'chordN') {
                                     if (currentModeNoteList) {
                                         chordToPlay = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
-                                        highlightPianoKeysForChord(chordToPlay); // Highlight only current chord notes for ChordN
-                                        highlightPlaybackPianoKeysForChord(chordToPlay);
+                                        highlightPianoKeys(chordToPlay); // Highlight only current chord notes for ChordN
+                                        highlightPlaybackPianoKeys(chordToPlay);
                                     }
-                                } else { // arpMode === 'chord'
+                                } else { // arpMode === 'chord'  
                                     chordToPlay = currentModeNoteList;
-                                    highlightPianoKeysForChord(chordToPlay); // Highlight all chord notes for Chord
-                                    highlightPlaybackPianoKeysForChord(chordToPlay);
+                                    highlightPianoKeys(chordToPlay); // Highlight all chord notes for Chord
+                                    highlightPlaybackPianoKeys(chordToPlay);
                                 }
                                 playNotes(chordToPlay);
                                 advancePatternIndex();
@@ -1698,7 +1739,7 @@
                                 advancePatternIndex();
                                 stepType = 'note';
                                 highlightCurrentStep('note', noteForStep);
-                                highlightPlaybackPianoKey(noteForStep);
+                                highlightPlaybackPianoKeys(noteForStep);
                                 patternEventProcessed = true;
                             }  else {
                                 stepType = 'rest';
@@ -1717,7 +1758,7 @@
                         }
 
 
-                    } else if (currentPatternEvent === 'S') { // Skip in Pattern
+                    } else if (currentPatternEvent === PATTERN_SKIP) { // Skip in Pattern
                         advancePatternIndex();
                         currentNoteIndex++;
                         if (arpMode === 'stableShuffled') stableShuffleIndex++;
@@ -1729,7 +1770,7 @@
                     }
                     if (patternEventProcessed) break;
                 }
-            } else if (currentRhythmEvent === 'R') { // Rest in Rhythm
+            } else if (currentRhythmEvent === RHYTHM_REST) { // Rest in Rhythm
                 stepType = 'rest';
                 highlightCurrentStep('rest', null);
             } else {
@@ -1867,19 +1908,6 @@
             playbackDisplayElem.scrollLeft = playbackDisplayElem.scrollWidth;
         }
 
-        /**
-         * Helper function to compare if two arrays are equal.
-         * @param {array} arr1
-         * @param {array} arr2
-         * @returns {boolean}
-         */
-        function arraysAreEqual(arr1, arr2) {
-            if (arr1.length !== arr2.length) return false;
-            for (let i = 0; i < arr1.length; i++) {
-                if (arr1[i] !== arr2[i]) return false;
-            }
-            return true;
-        }
 
         /** Generates the piano keyboard UI. */
         function generatePianoKeyboardUI() {
@@ -1934,25 +1962,13 @@
         /**
          * Highlights a piano key in the UI to indicate it's the current arpeggio note.
          * Unhighlights any previously highlighted key.
-         * @param {number} note - MIDI note number of the key to highlight.
+         * @param {number|number[]} notes - MIDI note number or array of MIDI note numbers of the keys to highlight.
          */
-        function highlightPianoKey(note) {
-            unhighlightPianoKey();
-            const keyElement = document.getElementById(`pianoKey-${note}`);
-            if (keyElement) {
-                keyElement.classList.add('key-current');
-                highlightedPianoKey = keyElement;
-            }
-        }
-
-        /**
-         * Highlights a specific set of piano keys in the UI to indicate a chord is being played.
-         * @param {number[]} chordNotes - Array of MIDI note numbers to highlight as a chord.
-         */
-        function highlightPianoKeysForChord(chordNotes) {
-            unhighlightPianoKey(); // Clear any single note highlights first
-            if (chordNotes && chordNotes.length > 0) { // Check if chordNotes is valid
-                chordNotes.forEach(note => {
+         function highlightPianoKeys(notes) {
+         const notesArray = Array.isArray(notes) ? notes : [notes];
+            unhighlightPianoKeys(); // Clear any single note highlights first
+            if (notesArray && notesArray.length > 0) { // Check if notesArray is valid
+                notesArray.forEach(note => {
                     const keyElement = document.getElementById(`pianoKey-${note}`);
                     if (keyElement) {
                         keyElement.classList.add('key-current');
@@ -1961,8 +1977,9 @@
             }
         }
 
+
         /** Unhighlights all highlighted piano keys in the interactive keyboard. */
-        function unhighlightPianoKey() {
+        function unhighlightPianoKeys() {
 	            const currentHighlightedKeys = document.querySelectorAll('#pianoKeyboard .key.key-current');
 	            currentHighlightedKeys.forEach(key => {
 	                key.classList.remove('key-current');
@@ -1995,12 +2012,21 @@
             }
         }
 
+        /** Highlights the current step in the pattern rhythm display. */
+        function highlightCurrentPatternStep() {
+            highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
+        }
+
+        /** Highlights the current step in the arpeggio rhythm display. */
+        function highlightCurrentArpRhythmStep() {
+            highlightRhythmStep('rhythmDisplay', currentRhythmIndex);
+        }
 
         /** Unhighlights all current step highlights (rhythm steps and piano key). */
         function unhighlightCurrentStep() {
             unhighlightRhythmStep('patternDisplay');
             unhighlightRhythmStep('rhythmDisplay');
-            unhighlightPianoKey();
+            unhighlightPianoKeys();
         }
 
 
@@ -2011,20 +2037,24 @@
          * @param {boolean} highlightAllKeys - If true, highlights all held keys (for chord mode).
          */
         function highlightCurrentStep(stepType, note, highlightAllKeys = false) {
-            unhighlightPianoKey(); // Always unhighlight keys at the start of highlightCurrentStep
-            unhighlightPlaybackPianoKeyboardCurrentNote();
+            unhighlightPianoKeys(); // Always unhighlight keys at the start of highlightCurrentStep
+            unhighlightPlaybackPianoKeys();
 
-            highlightRhythmStep('rhythmDisplay', (currentRhythmIndex + rhythm.length) % rhythm.length);
-            highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
+            highlightCurrentArpRhythmStep();
+            highlightCurrentPatternStep();
+
 
             if (stepType === 'note') {
                 if (arpMode === 'chordN') {
                     const currentChord = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
-                    highlightPianoKeysForChord(currentChord); // Highlight specific chord notes for ChordN
+                    highlightPianoKeys(currentChord); // Highlight specific chord notes for ChordN
+                    highlightPlaybackPianoKeys(currentChord);
                 } else if (highlightAllKeys) {
-                    highlightPianoKeysForChord(heldNotes); // Highlight all held keys for chord mode
+                    highlightPianoKeys(heldNotes); // Highlight all held keys for chord mode
+                    highlightPlaybackPianoKeys(heldNotes);
                 } else if (note !== null) {
-                    highlightPianoKey(note); // Highlight single note for other modes
+                    highlightPianoKeys(note); // Highlight single note for other modes
+                    highlightPlaybackPianoKeys(note);
                 }
             }
             // If stepType is 'rest' or 'skip', we unhighlighted at the start, and do nothing more with piano keys, which is correct.
@@ -2073,21 +2103,12 @@
             });
         }
 
-        /** Highlights a piano key on the playback keyboard to indicate it's the current arpeggio note. */
-        function highlightPlaybackPianoKey(note) {
-            unhighlightPlaybackPianoKeyboardCurrentNote();
-            const keyElement = document.getElementById(`playbackKey-${note}`);
-            if (keyElement) {
-                keyElement.classList.add('key-current');
-                highlightedPlaybackPianoKey = keyElement;
-            }
-        }
-
         /** Highlights a set of piano keys on the playback keyboard for chords. */
-        function highlightPlaybackPianoKeysForChord(chordNotes) {
-            unhighlightPlaybackPianoKeyboardCurrentNote();
-            if (chordNotes && chordNotes.length > 0) {
-                chordNotes.forEach(note => {
+        function highlightPlaybackPianoKeys(notes) {
+        	const notesArray = Array.isArray(notes) ? notes : [notes];
+            unhighlightPlaybackPianoKeys();
+            if (notesArray && notesArray.length > 0) {
+                notesArray.forEach(note => {
                     const keyElement = document.getElementById(`playbackKey-${note}`);
                     if (keyElement) {
                         keyElement.classList.add('key-current');
@@ -2097,7 +2118,7 @@
         }
 
         /** Unhighlights the currently highlighted piano key on the playback keyboard. */
-        function unhighlightPlaybackPianoKeyboardCurrentNote() {
+        function unhighlightPlaybackPianoKeys() {
             const currentHighlightedKeys = document.querySelectorAll('#playbackKeyboardDisplay .playback-key.key-current');
             currentHighlightedKeys.forEach(key => {
                 key.classList.remove('key-current');
@@ -2106,7 +2127,7 @@
         }
 
         /** Clears all highlights from the playback piano keyboard (held and current notes). */
-        function unhighlightPlaybackPianoKeyboard() {
+        function unhighlightPlaybackPianoKeysAll() {
             const playbackKeys = document.querySelectorAll('.playback-key');
             playbackKeys.forEach(key => {
                 key.classList.remove('key-held-ui', 'key-held-midi', 'key-held-octave-expanded', 'key-current');
@@ -2192,7 +2213,7 @@
         document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2); // Initialize Walk Distance display
         document.getElementById('gateLengthValue').textContent = gateLengthPercentage; // Initialize Gate Length display
         document.getElementById('subArpScaleValue').textContent = subArpScalePercentage; // Initialize Sub Arp Scale display
-
+        updateTempoDisplay(); // Initialize tempo display
 
     </script>
 </body>
