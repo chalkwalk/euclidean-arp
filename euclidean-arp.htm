@@ -40,9 +40,7 @@
         <button class="note-button" data-note="69">A</button>
         <button class="note-button" data-note="71">B</button>
     </div>
-    <div class="held-notes-display">
-        <strong>Selected UI Notes:</strong> <span id="uiHeldNotesDisplay"></span>
-    </div>
+
 
     <div class="parameter-group">
         <h3>Pattern</h3>
@@ -146,8 +144,7 @@
     <script>
         let midiAccess;
         let midiOutput;
-        let heldNotes = []; // Notes from MIDI input
-        let uiHeldNotes = []; // Notes selected in UI
+        let heldNotes = []; // Notes from MIDI input and UI buttons
         let patternRhythm = [];
         let arpRhythm = [];
         let arpRunning = false;
@@ -195,27 +192,21 @@
         });
 
 
-        // UI Note Selection (same as before)
+        // UI Note Selection (now directly triggers noteOn/Off)
         const noteButtons = document.querySelectorAll('.note-button');
         noteButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const noteValue = parseInt(this.dataset.note);
-                const index = uiHeldNotes.indexOf(noteValue);
-                if (index > -1) {
-                    uiHeldNotes.splice(index, 1);
+                if (this.classList.contains('selected')) { // Button is currently selected, so turn note off
+                    noteOff(noteValue);
                     this.classList.remove('selected');
-                } else {
-                    uiHeldNotes.push(noteValue);
+                } else { // Button is not selected, so turn note on
+                    noteOn(noteValue);
                     this.classList.add('selected');
                 }
-                updateUiHeldNotesDisplay();
             });
         });
 
-        function updateUiHeldNotesDisplay() {
-            const noteNames = uiHeldNotes.map(midiNoteToName);
-            document.getElementById('uiHeldNotesDisplay').innerText = noteNames.join(", ");
-        }
 
         // MIDI Initialization (same as before)
         navigator.requestMIDIAccess()
@@ -289,7 +280,7 @@
                 updateHeldNotesDisplay();
                 // For stable shuffle, re-shuffle on note change
                 if (arpMode === 'stableShuffled' && arpRunning) {
-                    let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                    let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use empty array if no held notes
                     stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                     stableShuffleIndex = 0; // Reset index as notes changed
                     lastNotesToArp = [...notesToArp]; // Update last notes
@@ -304,7 +295,7 @@
                 updateHeldNotesDisplay();
                  // For stable shuffle, re-shuffle on note change
                 if (arpMode === 'stableShuffled' && arpRunning) {
-                    let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                    let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use empty array if no held notes
                     stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                     stableShuffleIndex = 0; // Reset index as notes changed
                     lastNotesToArp = [...notesToArp]; // Update last notes
@@ -455,11 +446,11 @@
 
 
         function startArpeggiator() {
-            if (!midiOutput && heldNotes.length === 0 && uiHeldNotes.length === 0) {
-                alert("No MIDI output device found and no UI notes selected. Please connect MIDI or select UI notes.");
+            if (!midiOutput && heldNotes.length === 0) {
+                alert("No MIDI output device found and no notes selected. Please connect MIDI or select UI notes.");
                 return;
             }
-            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+            let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use heldNotes directly, which now includes UI notes
             if (notesToArp.length === 0) {
                 alert("Hold some notes or select UI notes to start the arpeggiator.");
                 return;
@@ -511,7 +502,7 @@
                 return;
             }
 
-            let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+            let notesToArp = heldNotes.length > 0 ? heldNotes : []; // Use heldNotes directly
             if (arpMode === 'stableShuffled' && !arraysAreEqual(notesToArp, lastNotesToArp)) {
                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                 stableShuffleIndex = 0;
@@ -630,18 +621,18 @@
         document.getElementById('arpMode').addEventListener('change', function() {
              // Reset indices when changing arp mode for modes that use them
             if (['converge', 'diverge'].includes(this.value)) {
-                let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                let notesToArp = heldNotes.length > 0 ? heldNotes : [];
                 convergeStartIndex = 0;
                 convergeEndIndex = notesToArp.length > 0 ? notesToArp.length - 1 : 0;
                 divergeStartIndex = Math.floor(notesToArp.length / 2); // Reset diverge start to middle
                 divergeEndIndex = Math.ceil(notesToArp.length / 2) - 1; // Reset diverge end to middle (or just below)
                 convergeDivergeStep = 0; // Reset step counter for converge/diverge
             } else if (this.value === 'stableShuffled') {
-                 let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                 let notesToArp = heldNotes.length > 0 ? heldNotes : [];
                  stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
                  stableShuffledIndex = 0;
             } else if (this.value === 'shuffled') {
-                let notesToArp = heldNotes.length > 0 ? heldNotes : uiHeldNotes;
+                let notesToArp = heldNotes.length > 0 ? heldNotes : [];
                 shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
             }
             arpMode = this.value;
@@ -649,7 +640,6 @@
 
 
         updateRhythmDisplays();
-        updateUiHeldNotesDisplay();
     </script>
 </body>
 </html>
