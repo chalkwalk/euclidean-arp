@@ -977,6 +977,7 @@
 
         /**
          * Finds the closest note index in the new note list to the previous note, for continuity.
+         * Implements fallback to the 'next' note if the 'current' note is not found.
          * @param {number} previousNote - The note that was playing at the current arp index in the old list.
          * @param {number[]} oldNoteList - The previous mode note list.
          * @param {number[]} newNoteList - The newly generated mode note list.
@@ -986,19 +987,48 @@
         function findClosestNoteIndex(previousNote, oldNoteList, newNoteList, previousIndex) {
             if (newNoteList.length === 0) return 0; // Reset if new list is empty
 
-            let foundIndex = 0;
+            let foundIndex = -1;
             let minDistance = Infinity;
+            let currentNoteFound = false;
 
+            // -- First, try to find the *current* note --
             for (let i = 0; i < newNoteList.length; i++) {
                 if (newNoteList[i] === previousNote) {
-                    const distance = Math.min(Math.abs(i - previousIndex), newNoteList.length - Math.abs(i - previousIndex)); // Consider circular distance
-                     if (distance < minDistance) {
+                    currentNoteFound = true;
+                    const distance = Math.min(Math.abs(i - previousIndex), newNoteList.length - Math.abs(i - previousIndex)); // Circular distance
+                    if (distance < minDistance) {
                         minDistance = distance;
                         foundIndex = i;
                     }
                 }
             }
-            return foundIndex;
+
+            if (currentNoteFound) {
+                return foundIndex; // Return index of current note if found
+            }
+
+            // -- Fallback: If current note not found, search for the *next* note --
+            let nextNote = oldNoteList[(previousIndex + 1) % oldNoteList.length];
+            if (oldNoteList.length === 0) nextNote = -1; // No next note if old list was empty.
+
+            if (nextNote !== -1) {
+                minDistance = Infinity; // Reset minDistance for next note search
+                foundIndex = -1; // Reset foundIndex for next note search
+                for (let i = 0; i < newNoteList.length; i++) {
+                    if (newNoteList[i] === nextNote) {
+                        const distance = Math.min(Math.abs(i - previousIndex), newNoteList.length - Math.abs(i - previousIndex)); // Circular distance
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            foundIndex = i;
+                        }
+                    }
+                }
+                if (foundIndex !== -1) {
+                    return foundIndex; // Return index of next note if found
+                }
+            }
+
+            return 0; // Default to 0 if neither current nor next note is found
         }
 
 
