@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>Euclidean MPE Arpeggiator Prototype</title>
+    <title>MPE Euclidean Arpeggiator</title>
     <style>
         body { font-family: sans-serif; }
         .rhythm-display { display: flex; margin-bottom: 10px; }
@@ -21,6 +21,12 @@
         .rhythm-step.skip { background-color: #b2b2f0; border-color: #8f8fcc; color: #000050; /* Muted blue for skips */ }
         .rhythm-step.note { background-color: #f0f0b2; border-color: #ccf08f; color: #505000; /* Muted yellow for notes */ }
         .rhythm-step.current-step { border: 2px solid blue; /* Stronger current step highlight */ }
+        /* --- NEW DISABLED RHYTHM STEP STYLE --- */
+        .rhythm-step.disabled-step {
+            background-color: #e0e0e0; /* Greyed out background */
+            border-color: #bbb;       /* Lighter border */
+            color: #999;              /* Lighter text color */
+        }
 
         .parameter-group { margin-bottom: 10px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; /* Added border and padding to parameter groups */ background-color: #fafafa; /* Lighter background for parameter groups */ }
         .parameter-group h3 { margin-top: 0; color: #555; /* Slightly darker heading text */ }
@@ -391,6 +397,11 @@
         <div id="pattern-tab" class="tab-content tab-pane">
             <fieldset class="parameter-group">
                 <legend><h3>Pattern Settings</h3></legend>
+                <!-- --- NEW Pattern Enable Checkbox --- -->
+                <div class="slider-container" title="Enable or disable the pattern rhythm.">
+                    <input type="checkbox" id="enablePattern" checked title="Enable pattern rhythm to introduce skips.">
+                    <label for="enablePattern" style="text-align: left; width: auto;">Enable Pattern</label>
+                </div>
                 <div class="slider-container" title="Number of steps in the pattern rhythm.">
                     <label for="patternSteps">Steps:</label>
                     <input type="range" id="patternSteps" value="5" min="1" max="32" step="1" title="Adjust the number of steps in the pattern.">
@@ -413,6 +424,11 @@
         <div id="rhythm-tab" class="tab-content tab-pane">
             <fieldset class="parameter-group">
                 <legend><h3>Rhythm Settings</h3></legend>
+                 <!-- --- NEW Rhythm Enable Checkbox --- -->
+                <div class="slider-container" title="Enable or disable the arpeggio rhythm.">
+                    <input type="checkbox" id="enableRhythm" checked title="Enable arpeggio rhythm to introduce rests.">
+                    <label for="enableRhythm" style="text-align: left; width: auto;">Enable Rhythm</label>
+                </div>
                 <div class="slider-container" title="Number of steps in the arpeggio rhythm.">
                     <label for="rhythmSteps">Steps:</label>
                     <input type="range" id="rhythmSteps" value="7" min="1" max="32" step="1" title="Adjust the number of steps in the arpeggio rhythm.">
@@ -602,6 +618,9 @@
         let midiAccess = null;
         let midiOutput = null;
         let midiInput = null;
+        let isSustainPedalPressed = false; // NEW: Track sustain pedal state
+        let sustainedNotesMIDI = new Set();  // NEW: Track MIDI notes sustained by pedal
+
 
         // --- Rhythm Event Constants ---
         const RHYTHM_BEAT = 'B';
@@ -622,6 +641,10 @@
         // --- Rhythm Pattern Variables ---
         let patternRhythm = []; // Euclidean rhythm for note pattern (Note/Skip)
         let rhythm = [];     // Euclidean rhythm for arpeggio rhythm (Beat/Rest)
+        // --- NEW Rhythm Enable Flags ---
+        let isPatternDisabled = false;
+        let isRhythmDisabled = false;
+
 
         // --- Arpeggiator State Variables ---
         let arpRunning = false;         // Arpeggiator play/stop state
@@ -692,6 +715,7 @@
         // -- Miscellaneous constants --
         const defaultNotePressure = 0; // Pressure that new notes get initialized to
         const defaultMpeYAxis = 0; // MPE Y value that new notes get initialized to
+        const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
         /**
          * Event listeners for UI controls.
@@ -735,10 +759,7 @@
         document.getElementById('octaves').addEventListener('input', function() {
             octaveCount = parseInt(this.value);
             document.getElementById('octavesValue').textContent = octaveCount;
-            // --- MODIFIED: generateOctaveExpandedNotes is used directly ---
-            heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
-            updatePlaybackKeyboardUI();
-            updateModeNoteList();
+            updateHeldNotesArrays();
         });
         document.getElementById('tempoSource').addEventListener('change', function() {
             tempoSource = this.value;
@@ -804,6 +825,17 @@
         });
         document.getElementById('subArpMode').addEventListener('change', function() {
             subArpMode = this.value; // Update subArpMode variable
+        });
+        // --- NEW Event Listeners for Enable/Disable Checkboxes ---
+        document.getElementById('enablePattern').addEventListener('change', function() {
+            isPatternDisabled = !this.checked; // Invert logic: checked means enabled, !checked means disabled
+            updateRhythmDisplays(); // Update rhythm display to reflect enabled/disabled state
+            updatePatternControlsState(); // Update pattern controls enabled/disabled state
+        });
+        document.getElementById('enableRhythm').addEventListener('change', function() {
+            isRhythmDisabled = !this.checked; // Invert logic: checked means enabled, !checked means disabled
+            updateRhythmDisplays(); // Update rhythm display to reflect enabled/disabled state
+            updateRhythmControlsState(); // Update rhythm controls enabled/disabled state
         });
 
         // --- TAB SWITCHING ---
@@ -930,7 +962,7 @@
             const expandedNotes = [];
             const seenNotes = new Set();
             for (let i = 0; i < octaves; i++) {
-                for (const originalNote of inputNotes) {          
+                for (const originalNote of inputNotes) {
                     const expandedNote = originalNote + (12 * i);
                     if (!seenNotes.has(expandedNote)) {
                         expandedNotes.push(expandedNote);
@@ -964,16 +996,32 @@
 
 
         /**
-         * Handles note on and note off events from both UI and MIDI sources.
-         * Updates held notes, UI, and starts/stops arpeggiator in Key Sync mode.
+         * Handles note on events from both UI and MIDI sources.
+         * Updates held notes, UI, and starts arpeggiator in Key Sync mode.
          * @param {number} note - MIDI note number.
          * @param {string} source - Source of the note event ('ui' or 'midi').
          * @param {number} channel - MIDI channel of the note on message (only for MIDI source).
          */
         function noteOn(note, source = 'ui', channel = null) {
+            addHeldNote(note, source, channel);
+        }
+
+        /**
+         * Handles note off events from MIDI sources.
+         * Updates held notes, UI, and stops arpeggiator in Key Sync mode if no notes are held.
+         * @param {number} note - MIDI note number.
+         * @param {string} source - Source of the note event ('ui' or 'midi').
+         * @param {number} channel - MIDI channel of the note off message (only for MIDI source).
+         */
+        function noteOff(note, source = 'midi', channel = null) {
+            removeHeldNote(note, source, channel);
+        }
+
+
+        /** Adds a note to held notes, handling octave expansion and UI update. */
+        function addHeldNote(note, source = 'ui', channel = null) {
             const isUI = source === 'ui';
             const heldSet = isUI ? heldNotesUI : heldNotesMIDI;
-
 
             if (isUI) {
                 if (!heldSet.has(note)) {
@@ -991,16 +1039,16 @@
                         }
                     }
                 }
-                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
-                updatePianoKeyboardUI(note, heldSet.has(note) ? 'ui' : null);
+                updateHeldNotesArrays(); // Update heldNotes array after raw notes change
+                updatePianoUIForNote(note, source);
             } else { // source === 'midi'
                 if (!heldNotesMIDI.has(note)) {
                     heldNotesMIDI.add(note);
                     rawHeldNotes.push(note);
                     playedNoteOrder.push(note);
                 }
-                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
-                updatePianoKeyboardUI(note, 'midi');
+                updateHeldNotesArrays(); // Update heldNotes array after raw notes change
+                updatePianoUIForNote(note, 'midi');
                 if (isMPEEnabled && channel !== null) {
                     mpeChannelNotes[channel] = note; // Track note on this channel
                 }
@@ -1014,7 +1062,6 @@
                 startArpeggiator();
             }
             updateArpeggiatorNoteListAndIndex();
-
 
             if (arpMode === 'shuffled' && arpRunning && shuffledNotesOrder.length > 0) {
                 const insertionIndex = Math.floor(Math.random() * shuffledNotesOrder.length);
@@ -1035,15 +1082,14 @@
             }
         }
 
-        /**
-         * Handles note off events from MIDI sources.
-         * Updates held notes, UI, and stops arpeggiator in Key Sync mode if no notes are held.
-         * @param {number} note - MIDI note number.
-         * @param {string} source - Source of the note event ('ui' or 'midi').
-         * @param {number} channel - MIDI channel of the note off message (only for MIDI source).
-         */
-        function noteOff(note, source = 'midi', channel = null) {
+
+        /** Removes a note from held notes, considering sustain pedal and UI update. */
+        function removeHeldNote(note, source = 'midi', channel = null) { // Default source now 'midi' as it's the main modified path
             if (source === 'midi') {
+                if (isSustainPedalPressed) {
+                    sustainedNotesMIDI.add(note); // Mark as sustained, don't remove yet
+                    return; // Early exit - note is sustained
+                }
                 heldNotesMIDI.delete(note);
                 const indexToRemove = rawHeldNotes.indexOf(note);
                 if (indexToRemove > -1) {
@@ -1053,8 +1099,8 @@
                         playedNoteOrder.splice(playedIndexToRemove, 1);
                     }
                 }
-                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
-                updatePianoKeyboardUI(note, heldNotesUI.has(note) ? 'ui' : null);
+                updateHeldNotesArrays(); // Update heldNotes array after raw notes change
+                updatePianoUIForNote(note, 'midi');
                 if (isMPEEnabled && channel !== null) {
                     mpeChannelNotes[channel] = null; // Clear note on this channel
                 }
@@ -1068,8 +1114,8 @@
                         playedNoteOrder.splice(playedIndexToRemove, 1);
                     }
                 }
-                heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
-                updatePianoKeyboardUI(note, heldNotesMIDI.has(note) ? 'midi' : null);
+                updateHeldNotesArrays(); // Update heldNotes array after raw notes change
+                updatePianoUIForNote(note, 'ui');
             }
 
             notePressures.delete(note);
@@ -1080,7 +1126,6 @@
                 stopArpeggiator();
             }
             updateArpeggiatorNoteListAndIndex();
-
 
             if (arpMode === 'shuffled' && arpRunning) {
                 const noteIndex = shuffledNotesOrder.indexOf(note);
@@ -1100,13 +1145,25 @@
                     stableShuffledOrder.splice(noteIndex, 1);
                     if (noteIndex < stableShuffleIndex && stableShuffleIndex > 0) {
                         stableShuffleIndex--;
-                    } else if (stableShuffleIndex >= stableShuffledOrder.length && stableShuffledOrder.length > 0) {
+                    } else if (stableShuffleIndex >= stableShuffledOrder.length && stableShuffleIndex.length > 0) {
                         stableShuffleIndex = stableShuffleIndex.length - 1;
-                    } else if (stableShuffledOrder.length === 0) {
+                    } else if (stableShuffleIndex.length === 0) {
                         stableShuffleIndex = 0;
                     }
                 }
             }
+        }
+
+        /** Updates the 'heldNotes' array from 'rawHeldNotes' based on octave count. */
+        function updateHeldNotesArrays() {
+            heldNotes = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
+            updatePlaybackKeyboardUI(); // Update playback keyboard UI to reflect octave expansion
+            updateModeNoteList(); // Re-generate mode note list as held notes changed
+        }
+
+        /** Updates the piano keyboard UI for a single note. */
+        function updatePianoUIForNote(note, source) {
+            updatePianoKeyboardUI(note, source);
         }
 
 
@@ -1129,9 +1186,13 @@
          * @param {number} offset - Offset/rotation of the rhythm.
          * @param {string} beatEvent - Event character for beats.
          * @param {string} restEvent - Event character for rests.
+         * @param {boolean} isDisabled - If true, rhythm is disabled and all steps are beatEvent.
          * @returns {string[]} - Array representing the Euclidean rhythm pattern.
          */
-        function generateEuclideanRhythm(steps, beats, offset, beatEvent, restEvent) {
+        function generateEuclideanRhythm(steps, beats, offset, beatEvent, restEvent, isDisabled = false) {
+            if (isDisabled) {
+                return new Array(steps).fill(beatEvent); // If disabled, all beats
+            }
             const rhythm = new Array(steps).fill(restEvent);
             let count = 0;
             for (let i = 0; i < steps; i++) {
@@ -1148,7 +1209,7 @@
         }
 
         /**
-         * Updates both pattern and arpeggio rhythm displays based on slider values.
+         * Updates both pattern and arpeggio rhythm displays based on slider values and enabled states.
          */
         function updateRhythmDisplays() {
             const patternStepsSlider = document.getElementById('patternSteps');
@@ -1161,8 +1222,8 @@
             const patternSteps = parseInt(patternStepsSlider.value);
             const patternBeats = parseInt(patternBeatsSlider.value);
             const patternOffset = parseInt(patternOffsetSlider.value);
-            patternRhythm = generateEuclideanRhythm(patternSteps, patternBeats, patternOffset, PATTERN_NOTE, PATTERN_SKIP);
-            displayRhythm(patternRhythm, 'patternDisplay');
+            patternRhythm = generateEuclideanRhythm(patternSteps, patternBeats, patternOffset, PATTERN_NOTE, PATTERN_SKIP, isPatternDisabled);
+            displayRhythm(patternRhythm, 'patternDisplay', isPatternDisabled); // Pass disabled state to displayRhythm
             document.getElementById('patternStepsValue').textContent = patternSteps;
             document.getElementById('patternBeatsValue').textContent = patternBeats;
             document.getElementById('patternOffsetValue').textContent = patternOffset;
@@ -1171,8 +1232,8 @@
             const rhythmSteps = parseInt(rhythmStepsSlider.value);
             const rhythmBeats = parseInt(rhythmBeatsSlider.value);
             const rhythmOffset = parseInt(rhythmOffsetSlider.value);
-            rhythm = generateEuclideanRhythm(rhythmSteps, rhythmBeats, rhythmOffset, RHYTHM_BEAT, RHYTHM_REST);
-            displayRhythm(rhythm, 'rhythmDisplay');
+            rhythm = generateEuclideanRhythm(rhythmSteps, rhythmBeats, rhythmOffset, RHYTHM_BEAT, RHYTHM_REST, isRhythmDisabled);
+            displayRhythm(rhythm, 'rhythmDisplay', isRhythmDisabled); // Pass disabled state to displayRhythm
             document.getElementById('rhythmStepsValue').textContent = rhythmSteps;
             document.getElementById('rhythmBeatsValue').textContent = rhythmBeats;
             document.getElementById('rhythmOffsetValue').textContent = rhythmOffset;
@@ -1193,11 +1254,39 @@
         }
 
         /**
+         * Updates the enabled/disabled state of pattern rhythm controls based on `isPatternDisabled`.
+         */
+        function updatePatternControlsState() {
+            const patternStepsSlider = document.getElementById('patternSteps');
+            const patternBeatsSlider = document.getElementById('patternBeats');
+            const patternOffsetSlider = document.getElementById('patternOffset');
+
+            patternStepsSlider.disabled = isPatternDisabled;
+            patternBeatsSlider.disabled = isPatternDisabled;
+            patternOffsetSlider.disabled = isPatternDisabled;
+        }
+
+        /**
+         * Updates the enabled/disabled state of arpeggio rhythm controls based on `isRhythmDisabled`.
+         */
+        function updateRhythmControlsState() {
+            const rhythmStepsSlider = document.getElementById('rhythmSteps');
+            const rhythmBeatsSlider = document.getElementById('rhythmBeats');
+            const rhythmOffsetSlider = document.getElementById('rhythmOffset');
+
+            rhythmStepsSlider.disabled = isRhythmDisabled;
+            rhythmBeatsSlider.disabled = isRhythmDisabled;
+            rhythmOffsetSlider.disabled = isRhythmDisabled;
+        }
+
+
+        /**
          * Displays a rhythm pattern in the UI.
          * @param {string[]} rhythmArray - Array of rhythm events.
          * @param {string} displayElementId - ID of the HTML element to display the rhythm in.
+         * @param {boolean} isDisabled - If true, apply disabled styling.
          */
-        function displayRhythm(rhythmArray, displayElementId) {
+        function displayRhythm(rhythmArray, displayElementId, isDisabled) {
             const displayElement = document.getElementById(displayElementId);
             displayElement.innerHTML = '';
             rhythmArray.forEach((event, index) => {
@@ -1209,6 +1298,7 @@
                 else if (event === RHYTHM_REST) stepElement.classList.add('rest');
                 else if (event === PATTERN_SKIP) stepElement.classList.add('skip');
                 else if (event === PATTERN_NOTE) stepElement.classList.add('note');
+                if (isDisabled) stepElement.classList.add('disabled-step'); // Apply disabled style
                 displayElement.appendChild(stepElement);
             });
         }
@@ -1561,7 +1651,6 @@
             if (arpRunning) return;
 
             let notesToArp = heldNotes.length > 0 ? heldNotes : [];
-            notesToArp.sort((a, b) => a - b);
             updateModeNoteList();
 
             // Reset stable shuffle order only if held notes have changed
@@ -1712,6 +1801,22 @@
                     const channel = commandLoBits;
                     const ccNumber = byte1;
                     const ccValue = byte2;
+
+                    if (ccNumber === 64) { // Sustain Pedal (CC#64)
+                        if (ccValue >= 64) { // Pedal Down
+                            isSustainPedalPressed = true;
+                        } else {              // Pedal Up
+                            isSustainPedalPressed = false;
+                            // Process sustained notes now that pedal is released
+                            let notesToRelease = [...sustainedNotesMIDI]; // Copy to avoid modifying while iterating
+                            sustainedNotesMIDI.clear();
+                            notesToRelease.forEach(note => {
+                                removeHeldNote(note, 'midi'); // Now actually remove the notes
+                            });
+                        }
+                        return; // Important: Exit function after handling sustain
+                    }
+
                     const channelNote = mpeChannelNotes[channel];
                     if (isMPEEnabled && ccNumber == 74) {
 	                    if (channelNote !== null && noteMPEYAxis.has(channelNote)) {
@@ -1782,12 +1887,16 @@
             let stepType = null;
 
             const currentRhythmEvent = rhythm[currentRhythmIndex];
+            const patternEventActive = !isPatternDisabled; // Check if pattern is enabled
+            const rhythmEventActive = !isRhythmDisabled;   // Check if rhythm is enabled
 
-            if (currentRhythmEvent === RHYTHM_BEAT) { // Beat in Rhythm
+            if (rhythmEventActive && currentRhythmEvent === RHYTHM_BEAT || !rhythmEventActive) { // Beat in Rhythm (or rhythm disabled)
                 let patternEventProcessed = false;
                 while (!patternEventProcessed) {
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
-                    if (currentPatternEvent === PATTERN_NOTE) { // Note in Pattern
+                    const patternStepType = patternEventActive ? currentPatternEvent : PATTERN_NOTE; // Use pattern event if pattern enabled, else force 'Note'
+
+                    if (patternStepType === PATTERN_NOTE) { // Note in Pattern
                         if (arpMode === 'chord' || arpMode === 'chordN') { // Chord Mode Logic
                             if (currentModeNoteList.length > 0) {
                                 let chordToPlay = [];
@@ -1853,7 +1962,7 @@
                         }
 
 
-                    } else if (currentPatternEvent === PATTERN_SKIP) { // Skip in Pattern
+                    } else if (patternStepType === PATTERN_SKIP) { // Skip in Pattern
                         advancePatternIndex();
                         currentNoteIndex++;
                         if (arpMode === 'stableShuffled') stableShuffleIndex++;
@@ -1865,7 +1974,7 @@
                     }
                     if (patternEventProcessed) break;
                 }
-            } else if (currentRhythmEvent === RHYTHM_REST) { // Rest in Rhythm
+            } else if (rhythmEventActive && currentRhythmEvent === RHYTHM_REST) { // Rest in Rhythm
                 stepType = 'rest';
                 highlightCurrentStep('rest', null);
             } else {
@@ -2035,7 +2144,6 @@
         /** Generates the piano keyboard UI. */
         function generatePianoKeyboardUI() {
             const pianoKeyboard = document.getElementById('pianoKeyboard');
-            const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
             const startNote = 48; // Low C (C3)
             const numberOfKeys = 25;
 
@@ -2135,14 +2243,18 @@
             }
         }
 
-        /** Highlights the current step in the pattern rhythm display. */
+        /** Highlights the current step in the pattern rhythm display, only if not disabled. */
         function highlightCurrentPatternStep() {
-            highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
+            if (!isPatternDisabled) { // NEW: Check if pattern is disabled
+                highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
+            }
         }
 
-        /** Highlights the current step in the arpeggio rhythm display. */
+        /** Highlights the current step in the arpeggio rhythm display, only if not disabled. */
         function highlightCurrentArpRhythmStep() {
-            highlightRhythmStep('rhythmDisplay', currentRhythmIndex);
+            if (!isRhythmDisabled) { // NEW: Check if rhythm is disabled
+                highlightRhythmStep('rhythmDisplay', currentRhythmIndex);
+            }
         }
 
         /** Unhighlights all current step highlights (rhythm steps and piano key). */
@@ -2188,7 +2300,6 @@
         /** Generates the non-interactive playback piano keyboard UI. */
         function generatePlaybackPianoKeyboardUI() {
             const playbackKeyboard = document.getElementById('playbackKeyboardDisplay');
-            const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
             const startNote = 36; // C2
             const numberOfKeys = 61; // 5 octaves (C2 to C7)
 
@@ -2200,7 +2311,7 @@
                 key.dataset.note = noteValue;
                 key.id = `playbackKey-${noteValue}`;
 
-                if (noteName.includes('#')) {
+                if (noteName && noteName.includes('#')) {
                     key.classList.add('playback-black-key');
                 } else {
                     key.classList.add('playback-white-key');
@@ -2337,6 +2448,8 @@
         document.getElementById('gateLengthValue').textContent = gateLengthPercentage; // Initialize Gate Length display
         document.getElementById('subArpScaleValue').textContent = subArpScalePercentage; // Initialize Sub Arp Scale display
         updateTempoDisplay(); // Initialize tempo display
+        updatePatternControlsState(); // Initialize pattern controls state on load
+        updateRhythmControlsState();   // Initialize rhythm controls state on load
 
     </script>
 </body>
