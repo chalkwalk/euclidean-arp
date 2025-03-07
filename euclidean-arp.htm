@@ -201,7 +201,7 @@
             <option value="convergeDiverge">Converge/Diverge</option>
             <option value="convergeDivergeInclusive">Converge/Diverge (Incl.)</option>
             <option value="walk">Walk</option>
-            <option value="normalWalk">Normal Walk</normalWalk>
+            <option value="normalWalk">Normal Walk</option>
         </select><br>
 
         <div id="chordNControls">
@@ -363,7 +363,7 @@
         let tempoSource = 'internal';
         let bpm = 120;
         let clockDivision = '1/4';
-        let tickCounter = 0;
+        let tickCounter = -1;
         let clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision); // Ticks per step based on clock division
         let internalClockInterval = null;
 
@@ -620,7 +620,7 @@
             const newModeNoteList = updateModeNoteList();
 
             if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
-                if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive'].includes(arpMode)) {
+                if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive', 'walk', 'normalWalk'].includes(arpMode)) {
                     currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[previousArpNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousArpNoteIndexVal);
                 } else {
                     currentArpNoteIndex = (currentArpNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
@@ -1138,7 +1138,7 @@
             const intervalMs = 60000 / (bpm * 24); // Milliseconds per tick (24 PPQN)
             internalClockInterval = setInterval(tick, intervalMs);
             clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
-            tickCounter = 0;
+            tickCounter = -1;
             console.log(`Internal clock setup: BPM=${bpm}, Division=${clockDivision}, Interval=${intervalMs.toFixed(2)}ms, Ticks per step=${clockDivisionCounterMax}`);
         }
 
@@ -1170,13 +1170,18 @@
             resetArpRhythmIndex();
             resetPatternIndex();
             currentArpNoteIndex = 0;
+            
+            if ((arpMode === 'walk' || arpMode === 'normalWalk') && currentModeNoteList.length > 0) {
+	            currentArpNoteIndex = Math.floor(currentModeNoteList.length / 2); // Start at middle index
+		    }
+            
             playbackDisplayElem.innerHTML = '';
 
             if (tempoSource === 'internal') {
                 setupInternalClock();
             } else {
                 clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
-                tickCounter = 0;
+                tickCounter = -1;
                 console.log(`External clock mode active, division=${clockDivision}, ticksPerStep=${clockDivisionCounterMax}`);
             }
         }
@@ -1225,7 +1230,6 @@
             const channel = command & 0x0F;
             const note = message.data[1];
             const velocity = (message.data.length > 2) ? message.data[2] : 0;
-            const pressure = velocity; // Velocity byte is used for pressure in aftertouch messages
 
             if (command === 0xF8) { // MIDI Clock Tick - 0xF8 (248 in decimal)
                 handleMIDITick();
@@ -1255,19 +1259,19 @@
                     noteOff(note, 'midi', channel); // MPE CHANNEL PRESSURE FIX - Pass channel to noteOff
                 } else if (commandHiBits === 0xA0) { // Polyphonic Aftertouch (0xA0-0xAF)
                     if (notePressures.has(note)) {
-                        notePressures.set(note, pressure);
+                        notePressures.set(note, velocity); // velocity byte is pressure in poly aftertouch
                     }
                 } else if (commandHiBits === 0xD0) { // Channel Pressure (0xD0-0xDF) - MPE Channel Pressure
                     // MPE CHANNEL PRESSURE FIX - START
                     if (isMPEEnabled) {
                         const channelNote = mpeChannelNotes[channel];
                         if (channelNote !== null && notePressures.has(channelNote)) {
-                            notePressures.set(channelNote, pressure); // Apply pressure only to the note on this channel
+                            notePressures.set(channelNote, note); // Note byte is pressure in channel pressure
                         }
                     } else { // Non-MPE Channel Pressure - Apply to all held MIDI notes (original behavior)
                         heldNotesMIDI.forEach(heldNote => {
                             if (notePressures.has(heldNote)) {
-                                notePressures.set(heldNote, pressure);
+                                notePressures.set(heldNote, note); // note byte is pressure in channel pressure
                             }
                         });
                     }
