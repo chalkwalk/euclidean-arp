@@ -358,9 +358,17 @@
          * Updates the arpeggio mode and resets related state.
          */
         document.getElementById('arpMode').addEventListener('change', function() {
+            const previousArpMode = arpMode;
             arpMode = this.value;
-            updateModeNoteList();
-            currentArpNoteIndex = 0;
+            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
+            const newModeNoteList = updateModeNoteList();
+
+            if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge'].includes(arpMode) && previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
+                currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[currentArpNoteIndex % previousModeNoteList.length], previousModeNoteList, newModeNoteList, currentArpNoteIndex);
+            } else {
+                currentArpNoteIndex = 0; // Reset index for other modes or empty lists
+            }
+
             const chordNControls = document.getElementById('chordNControls');
             if (arpMode === 'chordN') {
                 chordNControls.style.display = 'block';
@@ -601,6 +609,9 @@
             const isUI = source === 'ui';
             const heldSet = isUI ? heldNotesUI : heldNotesMIDI;
 
+            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
+            const previousArpNoteIndexVal = currentArpNoteIndex;
+
             if (isUI) {
                 if (!heldSet.has(note)) {
                     heldSet.add(note);
@@ -628,8 +639,15 @@
             if (arpSyncMode === 'key' && !arpRunning) {
                 startArpeggiator();
             }
-            updateModeNoteList();
-            currentArpNoteIndex = 0;
+            const newModeNoteList = updateModeNoteList();
+
+
+            if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge'].includes(arpMode) && previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
+                 currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[previousArpNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousArpNoteIndexVal);
+            } else {
+                currentArpNoteIndex = 0; // Reset index for other modes or empty lists
+            }
+
 
             if (arpMode === 'shuffled' && arpRunning && shuffledNotesOrder.length > 0) {
                 const insertionIndex = Math.floor(Math.random() * shuffledNotesOrder.length);
@@ -658,6 +676,10 @@
          * @param {string} source - Source of the note event ('ui' or 'midi').
          */
         function noteOff(note, source = 'midi') { // UI note-off is handled in noteOn toggle logic
+            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
+            const previousArpNoteIndexVal = currentArpNoteIndex;
+
+
             if (source === 'midi') {
                 heldNotesMIDI.delete(note);
                 const indexToRemove = rawHeldNotes.indexOf(note);
@@ -673,8 +695,14 @@
             if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
                 stopArpeggiator();
             }
-            updateModeNoteList();
-            currentArpNoteIndex = 0;
+            const newModeNoteList = updateModeNoteList();
+
+             if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge'].includes(arpMode) && previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
+                currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[previousArpNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousArpNoteIndexVal);
+            } else {
+                currentArpNoteIndex = 0; // Reset index for other modes or empty lists
+            }
+
 
             if (arpMode === 'shuffled' && arpRunning) {
                 const noteIndex = shuffledNotesOrder.indexOf(note);
@@ -925,6 +953,7 @@
 
         /**
          * Updates the currentModeNoteList based on the selected arpeggio mode and held notes.
+         * @returns {number[]} - The newly generated mode note list.
          */
         function updateModeNoteList() {
             let notesToArp = heldNotes.length > 0 ? heldNotes : [];
@@ -943,6 +972,33 @@
                 case 'chordN': currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue); break;
                 default: currentModeNoteList = generateUpNoteList(notesToArp); break; // 'up' is default
             }
+            return currentModeNoteList;
+        }
+
+        /**
+         * Finds the closest note index in the new note list to the previous note, for continuity.
+         * @param {number} previousNote - The note that was playing at the current arp index in the old list.
+         * @param {number[]} oldNoteList - The previous mode note list.
+         * @param {number[]} newNoteList - The newly generated mode note list.
+         * @param {number} previousIndex - The previous arpeggio note index.
+         * @returns {number} - The adjusted arpeggio note index in the new note list.
+         */
+        function findClosestNoteIndex(previousNote, oldNoteList, newNoteList, previousIndex) {
+            if (newNoteList.length === 0) return 0; // Reset if new list is empty
+
+            let foundIndex = 0;
+            let minDistance = Infinity;
+
+            for (let i = 0; i < newNoteList.length; i++) {
+                if (newNoteList[i] === previousNote) {
+                    const distance = Math.min(Math.abs(i - previousIndex), newNoteList.length - Math.abs(i - previousIndex)); // Consider circular distance
+                     if (distance < minDistance) {
+                        minDistance = distance;
+                        foundIndex = i;
+                    }
+                }
+            }
+            return foundIndex;
         }
 
 
@@ -1510,19 +1566,17 @@
         document.getElementById('arpRhythmBeats').addEventListener('input', updateRhythmDisplays);
         document.getElementById('arpRhythmOffset').addEventListener('input', updateRhythmDisplays);
         document.getElementById('arpMode').addEventListener('change', function() {
-            if (['converge', 'diverge'].includes(this.value)) {
-                // No specific reset needed now that note list generation is centralized
-            } else if (this.value === 'stableShuffled') {
-                 let notesToArp = heldNotes.length > 0 ? heldNotes : [];
-                 stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-                 stableShuffleIndex = 0;
-            } else if (this.value === 'shuffled') {
-                let notesToArp = heldNotes.length > 0 ? heldNotes : [];
-                shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
-            }
+            const previousArpMode = arpMode;
             arpMode = this.value;
-            updateModeNoteList();
-            currentArpNoteIndex = 0;
+            const previousModeNoteList = [...currentModeNoteList]; // Copy for comparison
+            const newModeNoteList = updateModeNoteList();
+
+            if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge'].includes(arpMode) && previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
+                currentArpNoteIndex = findClosestNoteIndex(previousModeNoteList[currentArpNoteIndex % previousModeNoteList.length], previousModeNoteList, newModeNoteList, currentArpNoteIndex);
+            } else {
+                currentArpNoteIndex = 0; // Reset index for other modes or empty lists
+            }
+
             const chordNControls = document.getElementById('chordNControls');
             if (arpMode === 'chordN') {
                 chordNControls.style.display = 'block';
