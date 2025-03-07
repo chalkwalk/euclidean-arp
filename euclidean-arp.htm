@@ -22,8 +22,6 @@
         .rhythm-step.note { background-color: #f0f0b2; border-color: #ccf08f; color: #505000; /* Muted yellow for notes */ }
         .rhythm-step.current-step { border: 2px solid blue; /* Stronger current step highlight */ }
 
-
-        .held-notes-display { margin-bottom: 10px; }
         .parameter-group { margin-bottom: 10px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; /* Added border and padding to parameter groups */ background-color: #fafafa; /* Lighter background for parameter groups */ }
         .parameter-group h3 { margin-top: 0; color: #555; /* Slightly darker heading text */ }
         .note-selector { margin-bottom: 10px; }
@@ -65,9 +63,56 @@
             background-color: #aaffaa; /* Distinct light green for MIDI held keys */
             color: black; /* Ensure text is readable on highlight */
         }
-        .key.key-current { /* New class for current key highlight */
+        key.key-current { /* New class for current key highlight */
             border: 2px solid blue; /* Example highlight style */
-            background-color: #ffffcc; /* Softer yellow for current note highlight */
+            background-color: #ffddaa; /* Softer yellow for current note highlight */
+        }
+
+        /* --- NEW PLAYBACK KEYBOARD STYLES --- */
+        .playback-keyboard-container { display: flex; justify-content: center; margin-bottom: 10px; } /* Center the playback keyboard */
+        .playback-keyboard { display: flex; border: 1px solid #aaa; border-radius: 5px; overflow: hidden; width: 600px; height: 40px; /* Fixed width and height for mini keyboard */ }
+        .playback-key {
+            height: 100%; /* Keys fill the height of the playback keyboard */
+            border-left: 1px solid #ddd;
+            border-bottom: 1px solid #bbb;
+            box-sizing: border-box;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 2px; /* Reduced padding */
+            font-size: 8px; /* Smaller font size */
+            user-select: none;
+            transition: background-color 0.1s ease;
+            cursor: default; /* Non-interactive cursor */
+        }
+        .playback-white-key {
+            width: calc(600px / 25 * 3/5); /* Adjust width based on total width and number of keys */
+            background-color: white;
+            color: black;
+        }
+        .playback-black-key {
+            width: calc(600px / 25 * 2/5); /* Adjust width based on total width and number of keys */
+            background-color: black;
+            color: white;
+            height: 70%; /* Black keys are shorter */
+            margin-left: calc(-600px / 25 * 1/5);
+            margin-right: calc(-600px / 25 * 1/5);
+            z-index: 1;
+            border-bottom: 1px solid #333;
+        }
+        .playback-key.key-held-ui { /* Style for UI held notes on playback keyboard */
+            background-color: #99ccee; /* Lighter shade of blue */
+        }
+        .playback-key.key-held-midi { /* Style for MIDI held notes on playback keyboard */
+            background-color: #ccffcc; /* Lighter shade of green */
+        }
+        .playback-key.key-held-octave-expanded { /* New style for octave-expanded notes */
+            background-color: #cceeff; /* A very light blue/grey, less prominent than UI/MIDI held */
+            color: black; /* Ensure text is readable if you decide to add text to these keys */
+        }
+        .playback-key.key-current { /* Style for currently playing notes on playback keyboard */
+            background-color: #ffddaa; /* Very light yellow */
+            border: 1px solid #ccc; /* Add border to current key on playback keyboard */
         }
         .playback-display { display: flex; overflow-x: hidden; border: 1px solid #ccc; height: 30px; margin-bottom: 10px; background-color: #eee; border-radius: 3px; /* Added background and border-radius to playback display */ padding-left: 5px; }
         .playback-step {
@@ -212,9 +257,10 @@
 <body>
     <h1>MPE Euclidean Arpeggiator</h1>
 
-    <div class="held-notes-display">
+    <!-- --- HELD NOTES DISPLAY REMOVED --- -->
+    <!-- <div class="held-notes-display">
         <strong>Held MIDI Notes:</strong> <span id="heldNotes"></span>
-    </div>
+    </div> -->
 
     <div class="note-selector" title="Use this keyboard to select notes with the mouse.">
         <strong>Select UI Notes:</strong>
@@ -236,14 +282,14 @@
                 <legend><h3>MIDI & MPE Settings</h3></legend>
 
 			    <div id="midiStatus">MIDI Status: Not connected</div>
-			
+
 			    <div class="device-selector" title="Select your MIDI input device.">
 			        <label for="midiInputSelect">MIDI Input:</label>
 			        <select id="midiInputSelect" title="Choose the MIDI input device to receive notes and clock from.">
 			            <option value="">No input device selected</option>
 			        </select>
 			    </div>
-			
+
 			    <div class="device-selector" title="Select your MIDI output device.">
 			        <label for="midiOutputSelect">MIDI Output:</label>
 			        <select id="midiOutputSelect" title="Choose the MIDI output device to send arpeggiated notes to.">
@@ -479,6 +525,12 @@
         </div>
     </div>
 
+    <!-- --- NEW PLAYBACK KEYBOARD CONTAINER --- -->
+    <div class="playback-keyboard-container" title="Visual display of held and playing notes. Not interactive.">
+        <div class="playback-keyboard" id="playbackKeyboardDisplay">
+            <!-- Playback piano keys will be generated here by JavaScript -->
+        </div>
+    </div>
 
     <div class="playback-display" id="playbackDisplay" title="Displays the sequence of played notes and rhythms."></div>
 
@@ -565,6 +617,7 @@
         const playbackDisplayElem = document.getElementById('playbackDisplay');
         const maxPlaybackSteps = 20;
         let highlightedPianoKey = null;
+        let highlightedPlaybackPianoKey = null; // For playback keyboard highlighting
 
         // --- Octave Expansion ---
         let octaveCount = 1;
@@ -622,10 +675,10 @@
         document.getElementById('octaves').addEventListener('input', function() {
             octaveCount = parseInt(this.value);
             document.getElementById('octavesValue').textContent = octaveCount;
-            const expansionResult = generateOctaveExpandedNotes(rawHeldNotes, octaveCount); 
+            const expansionResult = generateOctaveExpandedNotes(rawHeldNotes, octaveCount);
             heldNotes = expansionResult.expandedNotes;
             octaveExpandedNoteMap = expansionResult.noteMap;
-            updateHeldNotesDisplay();
+            updatePlaybackKeyboardUI();
             updateModeNoteList();
         });
         document.getElementById('tempoSource').addEventListener('change', function() {
@@ -851,7 +904,7 @@
 
             if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
                 if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive', 'walk', 'normalWalk'].includes(arpMode)) {
-                    currentNoteIndex = findClosestNoteIndex(previousModeNoteList[previousNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newModeNoteList, previousNoteIndexVal);
+                    currentNoteIndex = findClosestNoteIndex(previousModeNoteList[previousNoteIndexVal % previousModeNoteList.length], previousModeNoteList, newNoteList, previousNoteIndexVal);
                 } else {
                     currentNoteIndex = (currentNoteIndex % previousModeNoteList.length) % newModeNoteList.length; // Reset index for other modes or empty lists
                     if (!currentNoteIndex) currentNoteIndex = 0;
@@ -903,7 +956,7 @@
 
             notePressures.set(note, defaultNotePressure);
             noteMPEYAxis.set(note, defaultMpeYAxis);
-            updateHeldNotesDisplay();
+            updatePlaybackKeyboardUI();
 
             if (arpSyncMode === 'key' && !arpRunning) {
                 startArpeggiator();
@@ -956,7 +1009,7 @@
 
             notePressures.delete(note); // Remove pressure data for released note
             noteMPEYAxis.delete(note);
-            updateHeldNotesDisplay();
+            updatePlaybackKeyboardUI();
 
             if (arpSyncMode === 'key' && heldNotes.length === 0 && arpRunning) {
                 stopArpeggiator();
@@ -991,14 +1044,6 @@
             }
         }
 
-
-        /**
-         * Updates the display of currently held notes.
-         */
-        function updateHeldNotesDisplay() {
-            const noteNames = heldNotes.map(midiNoteToName);
-            document.getElementById('heldNotes').innerText = noteNames.join(", ");
-        }
 
         /**
          * Converts a MIDI note number to a note name (e.g., "C4").
@@ -1435,6 +1480,7 @@
             startButton.classList.remove('playing'); // Ensure 'Start' button doesn't show 'playing' state
             allNotesOff();
             unhighlightCurrentStep();
+            unhighlightPlaybackPianoKeyboardCurrentNote();
         }
 
         /**
@@ -1567,6 +1613,7 @@
             }
 
             unhighlightCurrentStep();
+            unhighlightPlaybackPianoKeyboardCurrentNote();
 
             let notesToArp = heldNotes.length > 0 ? heldNotes : [];
             if (arpSyncMode === 'free' && notesToArp.length === 0) {
@@ -1613,10 +1660,12 @@
                                     if (currentModeNoteList) {
                                         chordToPlay = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
                                         highlightPianoKeysForChord(chordToPlay); // Highlight only current chord notes for ChordN
+                                        highlightPlaybackPianoKeysForChord(chordToPlay);
                                     }
                                 } else { // arpMode === 'chord'
                                     chordToPlay = currentModeNoteList;
                                     highlightPianoKeysForChord(chordToPlay); // Highlight all chord notes for Chord
+                                    highlightPlaybackPianoKeysForChord(chordToPlay);
                                 }
                                 playNotes(chordToPlay);
                                 advancePatternIndex();
@@ -1649,6 +1698,7 @@
                                 advancePatternIndex();
                                 stepType = 'note';
                                 highlightCurrentStep('note', noteForStep);
+                                highlightPlaybackPianoKey(noteForStep);
                                 patternEventProcessed = true;
                             }  else {
                                 stepType = 'rest';
@@ -1911,8 +1961,7 @@
             }
         }
 
-
-        /** Unhighlights all highlighted piano keys. */
+        /** Unhighlights all highlighted piano keys in the interactive keyboard. */
         function unhighlightPianoKey() {
 	            const currentHighlightedKeys = document.querySelectorAll('#pianoKeyboard .key.key-current');
 	            currentHighlightedKeys.forEach(key => {
@@ -1963,6 +2012,7 @@
          */
         function highlightCurrentStep(stepType, note, highlightAllKeys = false) {
             unhighlightPianoKey(); // Always unhighlight keys at the start of highlightCurrentStep
+            unhighlightPlaybackPianoKeyboardCurrentNote();
 
             highlightRhythmStep('rhythmDisplay', (currentRhythmIndex + rhythm.length) % rhythm.length);
             highlightRhythmStep('patternDisplay', (currentPatternIndex + patternRhythm.length - 1) % patternRhythm.length);
@@ -1979,6 +2029,91 @@
             }
             // If stepType is 'rest' or 'skip', we unhighlighted at the start, and do nothing more with piano keys, which is correct.
         }
+
+        // --- NEW PLAYBACK KEYBOARD FUNCTIONS ---
+
+        /** Generates the non-interactive playback piano keyboard UI. */
+        function generatePlaybackPianoKeyboardUI() {
+            const playbackKeyboard = document.getElementById('playbackKeyboardDisplay');
+            const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+            const startNote = 36; // C2
+            const numberOfKeys = 61; // 5 octaves (C2 to C7)
+
+            for (let i = 0; i < numberOfKeys; i++) {
+                const noteValue = startNote + i;
+                const noteName = notes[i % 12];
+                const key = document.createElement('div');
+                key.classList.add('playback-key');
+                key.dataset.note = noteValue;
+                key.id = `playbackKey-${noteValue}`;
+
+                if (noteName.includes('#')) {
+                    key.classList.add('playback-black-key');
+                } else {
+                    key.classList.add('playback-white-key');
+                }
+                playbackKeyboard.appendChild(key);
+            }
+        }
+
+        /** Updates the visual state of the playback piano keyboard UI based on held and playing notes. */
+        function updatePlaybackKeyboardUI() {
+            const playbackKeys = document.querySelectorAll('.playback-key');
+            playbackKeys.forEach(key => {
+                const note = parseInt(key.dataset.note);
+                key.classList.remove('key-held-ui', 'key-held-midi', 'key-current', 'key-held-octave-expanded'); // Clear all highlight classes, including new one
+
+                if (heldNotesUI.has(note)) {
+                    key.classList.add('key-held-ui'); // Highlight UI held notes
+                } else if (heldNotesMIDI.has(note)) {
+                    key.classList.add('key-held-midi'); // Highlight MIDI held notes
+                } else if (heldNotes.includes(note) && !rawHeldNotes.includes(note)) {
+                    key.classList.add('key-held-octave-expanded'); // Highlight octave-expanded notes
+                }
+            });
+        }
+
+        /** Highlights a piano key on the playback keyboard to indicate it's the current arpeggio note. */
+        function highlightPlaybackPianoKey(note) {
+            unhighlightPlaybackPianoKeyboardCurrentNote();
+            const keyElement = document.getElementById(`playbackKey-${note}`);
+            if (keyElement) {
+                keyElement.classList.add('key-current');
+                highlightedPlaybackPianoKey = keyElement;
+            }
+        }
+
+        /** Highlights a set of piano keys on the playback keyboard for chords. */
+        function highlightPlaybackPianoKeysForChord(chordNotes) {
+            unhighlightPlaybackPianoKeyboardCurrentNote();
+            if (chordNotes && chordNotes.length > 0) {
+                chordNotes.forEach(note => {
+                    const keyElement = document.getElementById(`playbackKey-${note}`);
+                    if (keyElement) {
+                        keyElement.classList.add('key-current');
+                    }
+                });
+            }
+        }
+
+        /** Unhighlights the currently highlighted piano key on the playback keyboard. */
+        function unhighlightPlaybackPianoKeyboardCurrentNote() {
+            const currentHighlightedKeys = document.querySelectorAll('#playbackKeyboardDisplay .playback-key.key-current');
+            currentHighlightedKeys.forEach(key => {
+                key.classList.remove('key-current');
+            });
+            highlightedPlaybackPianoKey = null;
+        }
+
+        /** Clears all highlights from the playback piano keyboard (held and current notes). */
+        function unhighlightPlaybackPianoKeyboard() {
+            const playbackKeys = document.querySelectorAll('.playback-key');
+            playbackKeys.forEach(key => {
+                key.classList.remove('key-held-ui', 'key-held-midi', 'key-held-octave-expanded', 'key-current');
+            });
+            highlightedPlaybackPianoKey = null;
+        }
+
 
         // --- NEW WALK MODE FUNCTIONS ---
 
@@ -2046,6 +2181,8 @@
 
         // --- Initialization ---
         generatePianoKeyboardUI();
+        generatePlaybackPianoKeyboardUI();
+        updatePlaybackKeyboardUI();
         updateRhythmDisplays();
         updateModeNoteList(); // Initial note list generation on load
         document.getElementById('chordNValueDisplay').textContent = chordNValue; // Initialize ChordN display
