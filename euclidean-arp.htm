@@ -74,9 +74,14 @@
         <select id="arpMode">
             <option value="up">Up</option>
             <option value="down">Down</option>
+            <option value="upDown">Up/Down</option>
             <option value="upDownInclusive">Up/Down (Incl.)</option>
-            <option value="upDownExclusive">Up/Down (Excl.)</option>
             <option value="random">Random</option>
+            <option value="converge">Converge</option>
+            <option value="diverge">Diverge</option>
+            <option value="played">Played</option>
+            <option value="shuffled">Shuffled</option>
+            <option value="stableShuffle">Stable Shuffle</option>
         </select><br>
 
         <input type="checkbox" id="enableMPE">
@@ -158,6 +163,18 @@
         let mpeInputVoiceChannels = 8; // Number of MPE Input Voice Channels
         let mpeOutputMode = 'non-mpe'; // MPE Output Mode
         let mpeGlobalOutputChannel = '1'; // MPE Global Output Channel / Base Channel
+
+        // State variables for different arp modes
+        let upDownDirection = 1; // 1 for up, -1 for down, for upDown modes
+        let convergeDivergeDirection = 1; // 1 for converge (inward), -1 for diverge (outward)
+        let convergeStartIndex = 0;
+        let convergeEndIndex = 0;
+        let divergeStartIndex = 0;
+        let divergeEndIndex = 0;
+        let shuffledNotesOrder = [];
+        let stableShuffleOrder = [];
+        let stableShuffleIndex = 0;
+
 
         document.getElementById('startButton').addEventListener('click', startArpeggiator);
         document.getElementById('stopButton').addEventListener('click', stopArpeggiator);
@@ -341,19 +358,55 @@
         }
 
         function getArpNote(notesToArp) {
+            if (notesToArp.length === 0) return null; // Handle empty notes array
+
             switch (arpMode) {
                 case 'up':
                     return notesToArp[currentArpNoteIndex % notesToArp.length];
                 case 'down':
                     return notesToArp[notesToArp.length - 1 - (currentArpNoteIndex % notesToArp.length)];
+                case 'upDown':
+                    const upDownLength = 2 * notesToArp.length - 2;
+                    const upDownIndex = currentArpNoteIndex % upDownLength;
+                    if (upDownIndex < notesToArp.length) {
+                        return notesToArp[upDownIndex];
+                    } else {
+                        return notesToArp[notesToArp.length - 2 - (upDownIndex - notesToArp.length)];
+                    }
                 case 'upDownInclusive':
-                    // TODO: Implement Up/Down Inclusive logic
-                    return notesToArp[currentArpNoteIndex % notesToArp.length]; // Placeholder
-                case 'upDownExclusive':
-                    // TODO: Implement Up/Down Exclusive logic
-                    return notesToArp[currentArpNoteIndex % notesToArp.length]; // Placeholder
+                    const upDownInclusiveLength = 2 * notesToArp.length - 2;
+                    const upDownInclusiveIndex = currentArpNoteIndex % upDownInclusiveLength;
+                    if (upDownInclusiveIndex < notesToArp.length) {
+                        return notesToArp[upDownInclusiveIndex];
+                    } else {
+                        return notesToArp[upDownInclusiveLength - upDownInclusiveIndex];
+                    }
+                case 'converge':
+                    if (convergeStartIndex > convergeEndIndex) {
+                        convergeDirection = -1; // Switch to diverge after converge cycle
+                        convergeStartIndex = 0;
+                        convergeEndIndex = notesToArp.length -1;
+                    }
+                    const convergeNote = notesToArp[convergeStartIndex];
+                    convergeStartIndex++;
+                    return convergeNote;
+                case 'diverge':
+                    if (divergeStartIndex > divergeEndIndex) {
+                        divergeDirection = 1; // Switch to converge after diverge cycle
+                        divergeStartIndex = 0;
+                        divergeEndIndex = notesToArp.length -1;
+                    }
+                    const divergeNote = notesToArp[divergeEndIndex];
+                    divergeEndIndex--;
+                    return divergeNote;
+                case 'played':
+                    return notesToArp[currentArpNoteIndex % notesToArp.length]; // Same as 'up' for now, can be modified to remember played order if needed.
                 case 'random':
                     return notesToArp[Math.floor(Math.random() * notesToArp.length)];
+                case 'shuffled':
+                    return shuffledNotesOrder[currentArpNoteIndex % shuffledNotesOrder.length];
+                case 'stableShuffle':
+                    return stableShuffleOrder[stableShuffleIndex % stableShuffleOrder.length];
                 default: // 'up' is default
                     return notesToArp[currentArpNoteIndex % notesToArp.length];
             }
@@ -386,8 +439,27 @@
                 alert("Hold some notes or select UI notes to start the arpeggiator.");
                 return;
             }
-            // Sort notes for Up/Down modes to work predictably
+            // Sort notes for Up/Down, Converge/Diverge modes to work predictably
             notesToArp.sort((a, b) => a - b);
+
+            // Initialize mode specific variables on start
+            upDownDirection = 1;
+            convergeDirection = 1;
+            convergeStartIndex = 0;
+            convergeEndIndex = notesToArp.length - 1;
+            divergeDirection = -1; // Diverge starts from end and moves inward
+            divergeStartIndex = 0;
+            divergeEndIndex = notesToArp.length - 1;
+
+            // Shuffle notes for shuffled mode on start
+            shuffledNotesOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+
+            // Create stable shuffle order if not already created or if notes have changed.
+            if (stableShuffleOrder.length !== notesToArp.length || !stableShuffleOrder.every((note, index) => note === notesToArp[index])) {
+                stableShuffleOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+            }
+            stableShuffleIndex = 0;
+
 
             arpRunning = true;
             document.getElementById('startButton').disabled = true;
@@ -433,14 +505,18 @@
                     const currentPatternEvent = patternRhythm[currentPatternIndex];
                     if (currentPatternEvent === 'N') { // Note in Pattern
                         const noteToPlay = getArpNote(notesToArp); // Use getArpNote function
-                        playNote(noteToPlay);
+                        if (noteToPlay !== null) { // Check for null note (empty notesToArp)
+                            playNote(noteToPlay);
+                        }
                         currentArpNoteIndex++;
+                        if (arpMode === 'stableShuffle') stableShuffleIndex++; // Advance stable shuffle index
                         advancePatternIndex(); // Advance pattern index using method
                         stepType = 'note';
                         break; // Exit loop after playing note
                     } else if (currentPatternEvent === 'S') { // Skip in Pattern
                         advancePatternIndex(); // Advance pattern index using method
                         currentArpNoteIndex++;
+                        if (arpMode === 'stableShuffle') stableShuffleIndex++; // Advance stable shuffle index
                         stepType = 'skip';
                         // Continue loop to check next pattern event with the same arp rhythm beat
                     } else { // Should not happen ideally, but as a safety, break loop if pattern event is unexpected
@@ -460,7 +536,7 @@
             if (midiOutput) {
                 let outputChannel = parseInt(mpeGlobalOutputChannel) -1; // Channel is 0 indexed for MIDI
                 if (mpeOutputMode === 'mpe') {
-                    midiOutput.send([0xE0 + outputChannel, 0, 0x40, note, 100]); // Pitch Bend to center, Note On, channel from mpeGlobalOutputChannel (for now just base channel)
+                    midiOutput.send([0xE0 + outputChannel, 0, 0x40, 0x90 + outputChannel, note, 100]); // Pitch Bend to center, Note On, channel from mpeGlobalOutputChannel (for now just base channel)
                     setTimeout(() => { midiOutput.send([0x80 + outputChannel, note, 0]); }, 50); // Note Off
                 } else {
                     midiOutput.send([0x90 + outputChannel, note, 100]); // Note On, channel from mpeGlobalOutputChannel (for non-MPE)
