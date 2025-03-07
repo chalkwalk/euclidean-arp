@@ -486,6 +486,19 @@
                         <input type="range" id="chordNValue" value="2" min="1" max="16" step="1" title="Set the number of notes per chord in ChordN arpeggio mode.">
                         <span id="chordNValueDisplay" class="number-display">2</span>
                     </div>
+                    <!-- --- NEW ChordN Ordering Dropdown --- -->
+                    <div class="slider-container" title="Ordering mode for ChordN chords.">
+                        <label for="chordNOrdering">ChordN Ordering:</label>
+                        <select id="chordNOrdering" title="Select the ordering mode for ChordN chords.">
+                            <option value="up">Up</option>
+                            <option value="down">Down</option>
+                            <option value="upDown">Up/Down</option>
+                            <option value="upDownInclusive">Up/Down (Incl.)</option>
+                            <option value="converge">Converge</option>
+                            <option value="diverge">Diverge</option>
+                            <!-- Add more modes as implemented -->
+                        </select>
+                    </div>
                 </div>
 
                 <div id="walkParams" style="display: none;">
@@ -506,6 +519,18 @@
                     <label for="subArpScale">Sub Arp Scale (%):</label>
                     <input type="range" id="subArpScale" value="0" min="0" max="100" step="1" title="Control the timing spread of notes within chords. 0% for no sub-arp, 100% to fill clock division.">
                     <span id="subArpScaleValue" class="number-display">0</span>
+                </div>
+                <!-- --- NEW Sub Arp Mode Dropdown --- -->
+                <div class="slider-container" title="Arpeggio mode for sub-arpeggiation of chords.">
+                    <label for="subArpMode">Sub Arp Mode:</label>
+                    <select id="subArpMode" title="Select the arpeggio mode for sub-arpeggiation within chords.">
+                        <option value="up">Up</option>
+                        <option value="down">Down</option>
+                        <option value="random">Random</option>
+                        <option value="converge">Converge</option>
+                        <option value="diverge">Diverge</option>
+                        <!-- Add more modes as implemented -->
+                    </select>
                 </div>
                 <!-- --- END INSERT SUB ARP SCALE --- -->
 
@@ -618,6 +643,7 @@
 
         // --- Sub Arp ---
         let subArpScalePercentage = 0; // Default sub arp scale
+        let subArpMode = 'up';         // Default sub arp mode
 
 
         // --- MPE and MIDI Channel Settings ---
@@ -778,6 +804,12 @@
         document.getElementById('walkDistance').addEventListener('input', function() {
             walkDistance = parseFloat(this.value);
             document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2);
+        });
+        document.getElementById('chordNOrdering').addEventListener('change', function() {
+            updateModeNoteList(); // Re-generate note list when ChordN ordering changes
+        });
+        document.getElementById('subArpMode').addEventListener('change', function() {
+            subArpMode = this.value; // Update subArpMode variable
         });
 
         // --- TAB SWITCHING ---
@@ -1287,27 +1319,94 @@
          * Generates a list of chord combinations from held notes for ChordN mode.
          * @param {number[]} notes - Held MIDI notes.
          * @param {number} n - Number of notes per chord in ChordN.
-         * @returns {number[][]} - List of chord combinations.
+         * @param {string} [orderingMode='up'] - Optional arpeggio mode to order the chord combinations (e.g., 'up', 'down', 'converge'). Defaults to 'up'.
+         * @returns {number[][]} - List of chord combinations, potentially ordered.
          */
-        function generateChordNNoteList(notes, n) {
+        function generateChordNNoteList(notes, n, orderingMode = 'up') {
             if (notes.length === 0 || n <= 0) return [];
-            n = Math.min(n, notes.length); // Limit n to the number of held notes
+            n = Math.min(n, notes.length);
 
             const combinations = [];
             function combine(currentCombination, startIndex) {
                 if (currentCombination.length === n) {
-                    combinations.push([...currentCombination]); // Add a copy of the combination
+                    combinations.push([...currentCombination]);
                     return;
                 }
-
                 for (let i = startIndex; i < notes.length; i++) {
                     currentCombination.push(notes[i]);
-                    combine(currentCombination, i + 1); // Ensure notes are added in ascending order
-                    currentCombination.pop(); // Backtrack
+                    combine(currentCombination, i + 1);
+                    currentCombination.pop();
                 }
             }
             combine([], 0);
-            return combinations;
+
+            // Order combinations based on orderingMode
+            let orderedCombinations = combinations;
+            switch (orderingMode) {
+                case 'up': // Already in ascending order due to combine function
+                    break;
+                case 'down':
+                    orderedCombinations = [...combinations].reverse();
+                    break;
+                case 'upDown':
+                    orderedCombinations = generateAlternatingVariantCombinations(combinations); // Implement this function (see below)
+                    break;
+                case 'upDownInclusive':
+                    orderedCombinations = generateInclusiveAlternatingVariantCombinations(combinations); // Implement this function (see below)
+                    break;
+                case 'converge':
+                    orderedCombinations = generateConvergeCombinations(combinations); // Implement this function (see below)
+                    break;
+                case 'diverge':
+                    orderedCombinations = generateDivergeCombinations(combinations); // Implement this function (see below)
+                    break;
+                // Add other ordering modes as needed (convergeDiverge, etc.)
+                default: // Default to 'up' if orderingMode is not recognized
+                    break;
+            }
+
+            return orderedCombinations;
+        }
+
+        // Helper functions to order combinations (similar to your existing note list generators, but for arrays of notes)
+        function generateAlternatingVariantCombinations(combinations) {
+            return [...combinations, ...[...combinations].reverse().slice(1, -1)];
+        }
+
+        function generateInclusiveAlternatingVariantCombinations(combinations) {
+            return [...combinations, ...[...combinations].reverse()];
+        }
+
+        function generateConvergeCombinations(combinations) {
+            if (combinations.length <= 1) return [...combinations];
+            const convergeList = [];
+            let start = 0;
+            let end = combinations.length - 1;
+            while (start <= end) {
+                convergeList.push(combinations[start]);
+                if (start !== end) {
+                    convergeList.push(combinations[end]);
+                }
+                start++;
+                end--;
+            }
+            return convergeList;
+        }
+
+        function generateDivergeCombinations(combinations) {
+            if (combinations.length <= 1) return [...combinations];
+            const divergeList = [];
+            let start = Math.floor((combinations.length - 1) / 2);
+            let end = Math.ceil((combinations.length - 1) / 2);
+            while (start >= 0 && end < combinations.length) {
+                divergeList.push(combinations[start]);
+                if (start !== end) {
+                    divergeList.push(combinations[end]);
+                }
+                start--;
+                end++;
+            }
+            return divergeList;
         }
 
 
@@ -1331,7 +1430,10 @@
                 case 'shuffled': currentModeNoteList = generateShuffledNoteList(notesToArp); break;
                 case 'stableShuffled': currentModeNoteList = generateStableShuffledNoteList(notesToArp); break;
                 case 'chord': currentModeNoteList = generateChordNoteList(notesToArp); break;
-                case 'chordN': currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue); break;
+                case 'chordN':
+                    const chordNOrderingMode = document.getElementById('chordNOrdering').value; // Get selected ordering mode
+                    currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue, chordNOrderingMode); // Pass orderingMode
+                    break;
                 case 'walk': currentModeNoteList = generateUpNoteList(notesToArp); break; // Walk mode uses 'up' note list
                 case 'normalWalk': currentModeNoteList = generateUpNoteList(notesToArp); break; // Normal Walk mode uses 'up' note list
                 default: currentModeNoteList = generateUpNoteList(notesToArp); break; // 'up' is default
@@ -1703,12 +1805,13 @@
                                         highlightPianoKeys(chordToPlay); // Highlight only current chord notes for ChordN
                                         highlightPlaybackPianoKeys(chordToPlay);
                                     }
-                                } else { // arpMode === 'chord'  
+                                } else { // arpMode === 'chord'
                                     chordToPlay = currentModeNoteList;
                                     highlightPianoKeys(chordToPlay); // Highlight all chord notes for Chord
                                     highlightPlaybackPianoKeys(chordToPlay);
                                 }
-                                playNotes(chordToPlay);
+                                const selectedSubArpMode = document.getElementById('subArpMode').value; // Get selected sub arp mode
+                                playNotes(chordToPlay, selectedSubArpMode);
                                 advancePatternIndex();
                                 stepType = 'note';
                                 highlightCurrentStep('note', null, true); // Indicate chord with highlightAllKeys=true
@@ -1824,10 +1927,11 @@
 
 
         /**
-         * Plays a single note or an array of notes, with optional sub-arpeggiation for chords.
+         * Plays a single note or an array of notes, with optional sub-arpeggiation for chords and sub-arp modes.
          * @param {number|number[]} notes - MIDI note number or array of MIDI note numbers to play.
+         * @param {string} [subArpMode='up'] - Optional sub-arpeggiation mode (e.g., 'up', 'down', 'random'). Defaults to 'up'.
          */
-        function playNotes(notes) {
+        function playNotes(notes, subArpMode = 'up') {
             if (midiOutput) {
                 let outputChannel = parseInt(mpeGlobalOutputChannel) - 1;
                 const notesArray = Array.isArray(notes) ? notes : [notes]; // Ensure notes is always an array
@@ -1836,7 +1940,34 @@
                     // Sub-Arpeggiation Logic for Chords
                     const subArpDuration = (clockDivisionDurationMs * subArpScalePercentage) / 100;
                     const noteSpacing = subArpDuration / notesArray.length;
-                    notesArray.sort((a, b) => a - b).forEach((expandedNote, index) => { // Sort notes for bottom-to-top arpeggiation
+
+                    let subArpedChordNotes = [...notesArray]; // Copy to avoid modifying original
+
+                    // Apply sub-arp ordering mode
+                    switch (subArpMode) {
+                        case 'up': // Default - already in ascending order if notes are sorted initially, or keep original order
+                            subArpedChordNotes.sort((a, b) => a - b); // Ensure ascending order for 'up'
+                            break;
+                        case 'down':
+                            subArpedChordNotes.sort((a, b) => b - a); // Descending order
+                            break;
+                        case 'random':
+                            subArpedChordNotes.sort(() => Math.random() - 0.5); // Random order
+                            break;
+                        case 'converge':
+                            subArpedChordNotes = generateConvergeNoteList(subArpedChordNotes.sort((a, b) => a - b)); // Converge order (sort first for consistent behavior)
+                            break;
+                        case 'diverge':
+                            subArpedChordNotes = generateDivergeNoteList(subArpedChordNotes.sort((a, b) => a - b)); // Diverge order (sort first)
+                            break;
+                        // Add more sub-arp modes (upDown, etc.) as needed
+                        default: // Default to 'up' if subArpMode is not recognized
+                            subArpedChordNotes.sort((a, b) => a - b);
+                            break;
+                    }
+
+
+                    subArpedChordNotes.forEach((expandedNote, index) => {
                         const originalNote = octaveExpandedNoteMap.get(expandedNote);
                         let pressure = notePressures.get(originalNote) || defaultNotePressure;
                         let velocity = calculateVelocity(pressure);
