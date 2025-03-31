@@ -17,7 +17,7 @@ A fun way to use this is if you have an external synth connected via MIDI to the
 
 ## How it was made
 
-About 95% of this code was made on my phone, through Gemini 2 flash thinking (through AI Studio), and the QuickEdit+ editor. The remaining 5% was done on my computer in Vim. Since the AI model originally had a relatively short context window, I didn't have an ongoing session, but rather created a new session for each change. This means I needed to give context to the system. I ended up settling on the following workflow:
+About 95% of this code was made on my phone, through Gemini 2 flash thinking, and Gemini 2.5 pro (through AI Studio), and the QuickEdit+ editor. The remaining 5% was done on my computer in Vim. Since the AI model originally had a relatively short context window, I didn't have an ongoing session, but rather created a new session for each change. This means I needed to give context to the system. I ended up settling on the following workflow:
 
 1. Make a design for the project (around 3000 words in the latest revision, but incrementally grew as features were added);
 1. Feed the design as prompt text and the current code revision as an attachment;
