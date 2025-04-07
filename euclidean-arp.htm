@@ -610,6 +610,7 @@
          * Features include customizable patterns and arp rhythms, various arpeggio modes,
          * tempo sync options, and octave expansion. MPE and aftertouch/velocity mapping added.
          * Gate Flex feature added. ChordN Gate Extension feature added.
+         * Refactored Active Note management (A6).
          */
 
         // --- Utility Functions ---
@@ -649,16 +650,175 @@
         let noteMPEYAxis = new Map(); // Stores MPE Y Axis values
         let octaveExpandedNoteMap = new Map();
         let playedNoteOrder = []; // Stores notes in the order they were played
-        /**
-         * @typedef {object} ActiveNoteState
-         * @property {number | null} noteOffTimeoutId - Timeout ID for the scheduled note off, or null if extended.
-         * @property {boolean} isExtended - True if the note's gate is currently being extended by ChordN logic.
-         * @property {number} chordsHeldCount - How many consecutive chords this note instance has been held for.
-         * @property {number} timeHeldDivisions - How many clock divisions this note instance has been held for.
-         * @property {number} outputChannel - The MIDI channel this note is playing on.
-         */
-        /** @type {Map<number, ActiveNoteState>} */
-        let activeArpNotes = new Map(); // Tracks currently sounding notes from the arp and their state
+
+        // --- *** Refactor: ActiveNoteManager Module (A6) *** ---
+        const ActiveNoteManager = (function() {
+            /**
+             * @typedef {object} ActiveNoteState
+             * @property {number | null} noteOffTimeoutId - Timeout ID for the scheduled note off, or null if extended.
+             * @property {boolean} isExtended - True if the note's gate is currently being extended by ChordN logic.
+             * @property {number} chordsHeldCount - How many consecutive chords this note instance has been held for.
+             * @property {number} timeHeldDivisions - How many clock divisions this note instance has been held for.
+             * @property {number} outputChannel - The MIDI channel this note is playing on.
+             */
+            /** @type {Map<number, ActiveNoteState>} */
+            let activeArpNotes = new Map();
+
+            // Configuration will hold dependencies passed in
+            let config = {
+                midiOutput: null,
+                updatePlaybackKeyCallback: (note) => {}, // Default no-op
+                getMPEOutputMode: () => 'non-mpe' // Function to get current MPE output mode
+            };
+
+            // --- Internal MIDI Sending Helpers ---
+            // These now use config.midiOutput and config.getMPEOutputMode()
+            function sendNoteOnHelper(note, velocity, outputChannel) {
+                if (config.midiOutput && note >= 0 && note <= 127 && velocity > 0 && velocity <= 127 && outputChannel >= 0 && outputChannel <= 15) {
+                    const isMPE = config.getMPEOutputMode() === 'mpe';
+                    // console.log(`Sending Note ON via Manager: Note=${note}, Vel=${velocity}, Chan=${outputChannel + 1}, MPE=${isMPE}`);
+                    if (isMPE) {
+                        // Basic MPE Note On (implementation might need refinement later)
+                        config.midiOutput.send([0x90 + outputChannel, note, velocity]);
+                    } else {
+                        config.midiOutput.send([0x90 + outputChannel, note, velocity]);
+                    }
+                }
+            }
+
+            function sendNoteOffHelper(note, outputChannel, velocity = 0) {
+                if (config.midiOutput && note >= 0 && note <= 127 && outputChannel >= 0 && outputChannel <= 15) {
+                    const isMPE = config.getMPEOutputMode() === 'mpe';
+                    // console.log(`Sending Note OFF via Manager: Note=${note}, Vel=${velocity}, Chan=${outputChannel + 1}, MPE=${isMPE}`);
+                    if (isMPE) {
+                        // MPE Note Off uses velocity 0 on Note On or Note Off command
+                        config.midiOutput.send([0x80 + outputChannel, note, velocity]);
+                        // config.midiOutput.send([0x90 + outputChannel, note, 0]); // Alternative
+                    } else {
+                        config.midiOutput.send([0x80 + outputChannel, note, velocity]); // Non-MPE note off
+                    }
+                }
+            }
+
+            // --- Core Methods ---
+
+            function cancelNoteOff(note) {
+                const noteState = activeArpNotes.get(note);
+                if (noteState && noteState.noteOffTimeoutId !== null) {
+                    clearTimeout(noteState.noteOffTimeoutId);
+                    // Update state *within* the map directly
+                    activeArpNotes.set(note, {
+                        ...noteState,
+                        noteOffTimeoutId: null
+                    });
+                    config.updatePlaybackKeyCallback(note); // Update UI
+                }
+            }
+
+            function stopNote(note, outputChannel) {
+                // console.log(`Manager stopping Note: ${note}`);
+                cancelNoteOff(note); // Ensure timeout is cleared
+                if (activeArpNotes.has(note)) { // Check if it was actually active
+                    sendNoteOffHelper(note, outputChannel);
+                    activeArpNotes.delete(note);
+                    config.updatePlaybackKeyCallback(note); // Update UI
+                }
+                // else { console.warn(`Manager: Attempted to stop inactive note ${note}`); }
+            }
+
+            function scheduleNoteOff(note, delayMs, outputChannel) {
+                cancelNoteOff(note); // Clear any existing timeout for this note
+
+                const timeoutId = setTimeout(() => {
+                    stopNote(note, outputChannel); // Use internal stopNote to ensure cleanup
+                }, Math.max(0, delayMs)); // Ensure delay isn't negative
+
+                const currentState = activeArpNotes.get(note);
+                if (currentState) {
+                    activeArpNotes.set(note, {
+                        ...currentState,
+                        noteOffTimeoutId: timeoutId,
+                        isExtended: false
+                    }); // Mark as not extended now
+                    config.updatePlaybackKeyCallback(note); // Update UI
+                }
+                // else { console.warn(`Manager: Scheduled Note Off for inactive note ${note}`); }
+            }
+
+
+            function startNote(note, velocity, outputChannel) {
+                // console.log(`Manager starting Note: ${note}`);
+                // Prevent re-starting an already active note without stopping it first
+                if (activeArpNotes.has(note)) {
+                    // console.warn(`Manager: Attempted to start already active note ${note}. Cancelling pending off.`);
+                    cancelNoteOff(note); // Ensure any pending OFF is cancelled before ON
+                }
+
+                sendNoteOnHelper(note, velocity, outputChannel);
+                activeArpNotes.set(note, {
+                    noteOffTimeoutId: null,
+                    isExtended: false,
+                    chordsHeldCount: 0,
+                    timeHeldDivisions: 0,
+                    outputChannel: outputChannel
+                });
+                config.updatePlaybackKeyCallback(note); // Update UI
+            }
+
+            function allNotesOff() {
+                // console.log("Manager: Sending All Notes Off for Arp Notes:", Array.from(activeArpNotes.keys()));
+                // Create a copy of entries to iterate over, as stopNote modifies the map
+                const notesToStop = Array.from(activeArpNotes.entries());
+                notesToStop.forEach(([note, state]) => {
+                    stopNote(note, state.outputChannel); // Use internal stopNote for proper cleanup
+                });
+                // Double-check map is empty after iteration
+                if (activeArpNotes.size > 0) {
+                    console.warn("ActiveNoteManager: Map not empty after allNotesOff iteration.");
+                    activeArpNotes.clear(); // Force clear if needed
+                }
+            }
+
+            // --- Public Interface ---
+            return {
+                initialize: (initialConfig) => {
+                    config.midiOutput = initialConfig.midiOutput || null;
+                    config.updatePlaybackKeyCallback = initialConfig.updatePlaybackKeyCallback || ((note) => {});
+                    config.getMPEOutputMode = initialConfig.getMPEOutputMode || (() => 'non-mpe');
+                    // console.log("ActiveNoteManager initialized.");
+                },
+                // Call this when midiOutput changes
+                setMidiOutput: (outputDevice) => {
+                    // console.log("ActiveNoteManager MIDI output updating...");
+                    allNotesOff(); // Stop any notes playing on the old device
+                    config.midiOutput = outputDevice;
+                    // console.log("ActiveNoteManager MIDI output set to:", config.midiOutput ? config.midiOutput.name : "None");
+                },
+                // Provide read access to the map if needed externally
+                getActiveNotesMap: () => activeArpNotes,
+                // Core note lifecycle methods
+                startNote,
+                stopNote,
+                scheduleNoteOff,
+                cancelNoteOff,
+                allNotesOff,
+                // Helper to check if a note is active
+                hasNote: (note) => activeArpNotes.has(note),
+                // Method to update state properties (like extension) from external logic (e.g., playNotes)
+                updateNoteState: (note, newStatePartial) => {
+                    const currentState = activeArpNotes.get(note);
+                    if (currentState) {
+                        activeArpNotes.set(note, {
+                            ...currentState,
+                            ...newStatePartial
+                        });
+                        config.updatePlaybackKeyCallback(note); // Update UI on state change
+                    }
+                }
+            };
+        })();
+        // --- *** End ActiveNoteManager Module *** ---
+
 
         // --- Rhythm Pattern Variables ---
         let patternRhythm = []; // Euclidean rhythm for note pattern (Note/Skip)
@@ -792,6 +952,8 @@
         });
         document.getElementById('mpeOutputMode').addEventListener('change', function() {
             mpeOutputMode = this.value;
+            // *** Refactor: Notify ActiveNoteManager about MPE mode change if needed in future ***
+            // Currently, getMPEOutputMode reads the global state directly.
         });
         document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() {
             mpeGlobalOutputChannel = this.value;
@@ -963,9 +1125,15 @@
 
             if (outputSelect.options.length > 1) {
                 outputSelect.selectedIndex = 1;
-                selectMidiOutput(outputSelect.options[1].value);
+                selectMidiOutput(outputSelect.options[1].value); // This will now also initialize ActiveNoteManager
             } else {
                 document.getElementById('midiStatus').innerText += " No MIDI output device found.";
+                // Initialize manager even without output, it will just queue notes without sending
+                ActiveNoteManager.initialize({
+                    midiOutput: null,
+                    updatePlaybackKeyCallback: updatePlaybackKeyboardKey,
+                    getMPEOutputMode: () => mpeOutputMode
+                });
             }
 
             // Input device change listener
@@ -984,6 +1152,12 @@
          */
         function onMIDIFailure() {
             document.getElementById('midiStatus').innerText = "MIDI Status: MIDI access failed.";
+            // *** Refactor: Initialize manager even on failure ***
+            ActiveNoteManager.initialize({
+                midiOutput: null,
+                updatePlaybackKeyCallback: updatePlaybackKeyboardKey,
+                getMPEOutputMode: () => mpeOutputMode
+            });
         }
 
         /**
@@ -1008,7 +1182,7 @@
         }
 
         /**
-         * Selects a MIDI output device.
+         * Selects a MIDI output device and updates the ActiveNoteManager.
          * @param {string} outputId - ID of the MIDI output device.
          */
         function selectMidiOutput(outputId) {
@@ -1020,6 +1194,8 @@
             } else {
                 midiOutput = null;
             }
+            // *** Refactor: Update the ActiveNoteManager instance ***
+            ActiveNoteManager.setMidiOutput(midiOutput);
         }
 
         /**
@@ -2055,7 +2231,8 @@
             }
 
             playbackDisplayElem.innerHTML = ''; // Clear playback history
-            activeArpNotes.clear(); // Clear any previously active notes
+            // *** Refactor: Clear arp notes via manager ***
+            ActiveNoteManager.allNotesOff(); // Ensures notes are stopped correctly too
 
             if (tempoSource === 'internal') {
                 setupInternalClock();
@@ -2090,7 +2267,8 @@
             stopButton.disabled = true;
             stopButton.classList.add('playing');
             startButton.classList.remove('playing');
-            allNotesOff(); // Stop all sounding notes managed by the arp
+            // *** Refactor: Stop arp notes via manager ***
+            ActiveNoteManager.allNotesOff(); // Stop all sounding notes managed by the arp
             unhighlightCurrentStep();
             unhighlightPlaybackPianoKeys(); // Clear current note highlight
             // Optionally clear playback display: playbackDisplayElem.innerHTML = '';
@@ -2160,136 +2338,10 @@
         }
 
 
-        // --- MIDI Sending Helper Functions ---
-
-        /**
-         * Sends a raw MIDI note on message.
-         * @param {number} note - MIDI note number.
-         * @param {number} velocity - MIDI velocity (0-127).
-         * @param {number} outputChannel - MIDI output channel (0-15).
-         */
-        function sendNoteOnHelper(note, velocity, outputChannel) {
-            if (midiOutput && note >= 0 && note <= 127 && velocity > 0 && velocity <= 127 && outputChannel >= 0 && outputChannel <= 15) {
-                // console.log(`Sending Note ON: Note=${note}, Vel=${velocity}, Chan=${outputChannel + 1}`);
-                if (mpeOutputMode === 'mpe') {
-                    // Basic MPE Note On - assumes pitch bend is centered (0x4000)
-                    // A real MPE implementation would manage pitch bend per note.
-                    // Sending Pitch Bend Range RPNs might be needed for the receiving synth.
-                    // midiOutput.send([0xE0 + outputChannel, 0x00, 0x40]); // Pitch bend LSB=0, MSB=64 (center)
-                    midiOutput.send([0x90 + outputChannel, note, velocity]);
-                } else {
-                    midiOutput.send([0x90 + outputChannel, note, velocity]);
-                }
-            }
-        }
-
-        /**
-         * Sends a raw MIDI note off message.
-         * @param {number} note - MIDI note number.
-         * @param {number} outputChannel - MIDI output channel (0-15).
-         * @param {number} [velocity=0] - Release velocity (often 0 or 64).
-         */
-        function sendNoteOffHelper(note, outputChannel, velocity = 0) {
-            if (midiOutput && note >= 0 && note <= 127 && outputChannel >= 0 && outputChannel <= 15) {
-                // console.log(`Sending Note OFF: Note=${note}, Vel=${velocity}, Chan=${outputChannel + 1}`);
-                if (mpeOutputMode === 'mpe') {
-                    // MPE Note Off uses velocity 0 on Note On or Note Off command
-                    midiOutput.send([0x80 + outputChannel, note, velocity]);
-                    // midiOutput.send([0x90 + outputChannel, note, 0]); // Alternative MPE Note Off
-                } else {
-                    midiOutput.send([0x80 + outputChannel, note, velocity]); // Non-MPE note off
-                }
-            }
-        }
-
-        /**
-         * Schedules a Note Off message for a given note after a delay.
-         * Stores the timeout ID in activeArpNotes.
-         * @param {number} note - MIDI note number.
-         * @param {number} delayMs - Delay in milliseconds.
-         * @param {number} outputChannel - MIDI output channel (0-15).
-         */
-        function scheduleNoteOff(note, delayMs, outputChannel) {
-            cancelNoteOff(note); // Clear any existing timeout for this note
-
-            const timeoutId = setTimeout(() => {
-                stopNote(note, outputChannel); // Use stopNote to ensure cleanup
-            }, Math.max(0, delayMs)); // Ensure delay isn't negative
-
-            const currentState = activeArpNotes.get(note);
-            if (currentState) {
-                activeArpNotes.set(note, {
-                    ...currentState,
-                    noteOffTimeoutId: timeoutId,
-                    isExtended: false
-                }); // Mark as not extended now
-                updatePlaybackKeyboardKey(note); // Update key visuals
-            }
-            // If note wasn't active, it shouldn't reach here normally, but handle defensively
-            // else { console.warn(`Scheduled Note Off for inactive note ${note}`); }
-        }
-
-        /**
-         * Cancels a scheduled Note Off for a given note.
-         * @param {number} note - MIDI note number.
-         */
-        function cancelNoteOff(note) {
-            const noteState = activeArpNotes.get(note);
-            if (noteState && noteState.noteOffTimeoutId !== null) {
-                clearTimeout(noteState.noteOffTimeoutId);
-                activeArpNotes.set(note, {
-                    ...noteState,
-                    noteOffTimeoutId: null
-                });
-                updatePlaybackKeyboardKey(note); // Update key visuals
-            }
-        }
-
-        /**
-         * Starts a note: sends Note On and adds it to activeArpNotes.
-         * @param {number} note - MIDI note number.
-         * @param {number} velocity - MIDI velocity.
-         * @param {number} outputChannel - MIDI output channel.
-         */
-        function startNote(note, velocity, outputChannel) {
-            // console.log(`Starting Note: ${note}`);
-            // Prevent re-starting an already active note without stopping it first
-            // Although cancelNoteOff might handle the timeout, the note might still be considered 'on'
-            if (activeArpNotes.has(note)) {
-                // console.warn(`Attempted to start already active note ${note}. Stopping first.`);
-                // stopNote(note, activeArpNotes.get(note).outputChannel); // Stop cleanly before restarting
-                cancelNoteOff(note); // Ensure any pending OFF is cancelled before ON
-            }
-
-            sendNoteOnHelper(note, velocity, outputChannel);
-            activeArpNotes.set(note, {
-                noteOffTimeoutId: null,
-                isExtended: false,
-                chordsHeldCount: 0,
-                timeHeldDivisions: 0,
-                outputChannel: outputChannel
-            });
-            updatePlaybackKeyboardKey(note); // Update visuals
-        }
-
-        /**
-         * Stops a note: sends Note Off and removes it from activeArpNotes.
-         * Also ensures any scheduled Note Off is cancelled.
-         * @param {number} note - MIDI note number.
-         * @param {number} outputChannel - MIDI output channel.
-         */
-        function stopNote(note, outputChannel) {
-            // console.log(`Stopping Note: ${note}`);
-            cancelNoteOff(note); // Ensure timeout is cleared if stopNote is called early
-            if (activeArpNotes.has(note)) { // Check if it was actually active
-                sendNoteOffHelper(note, outputChannel);
-                activeArpNotes.delete(note);
-                updatePlaybackKeyboardKey(note); // Update visuals
-            }
-            // else { console.warn(`Attempted to stop inactive note ${note}`); }
-        }
-
-        // --- End MIDI Sending Helper Functions ---
+        // --- MIDI Sending Helper Functions (Now Internal to ActiveNoteManager) ---
+        // Functions sendNoteOnHelper, sendNoteOffHelper, scheduleNoteOff,
+        // cancelNoteOff, startNote, stopNote, allNotesOff are now methods
+        // or internal helpers within the ActiveNoteManager module above.
 
 
         /**
@@ -2503,30 +2555,43 @@
             unhighlightCurrentStep();
 
             // --- Update time held for extended notes AND Check Max Time Limit ---
-            const notesToStopTimeLimit = [];
-            activeArpNotes.forEach((state, note) => {
-                // Only increment time if it's actually being extended (prevents drift if logic elsewhere fails)
+            let notesToStopTimeLimit = [];
+            // *** Refactor: Use manager's map accessor and update method ***
+            ActiveNoteManager.getActiveNotesMap().forEach((state, note) => {
+                // Only increment time if it's actually being extended
                 if (state.isExtended && state.noteOffTimeoutId === null) {
-                    state.timeHeldDivisions++;
-                    // Check if THIS increment pushed it over the limit
-                    if (state.timeHeldDivisions >= maxTimeExtensionDivisions) { // Use >= to stop ON the limit step
-                        // console.log(`Note ${note} reached max time extension (${state.timeHeldDivisions}/${maxTimeExtensionDivisions}).`);
+                    const newTimeHeld = state.timeHeldDivisions + 1;
+                    // Update state via manager method first
+                    ActiveNoteManager.updateNoteState(note, {
+                        timeHeldDivisions: newTimeHeld
+                    });
+                    // Check limit using the updated value
+                    if (newTimeHeld >= maxTimeExtensionDivisions) {
+                        // console.log(`Note ${note} reached max time extension (${newTimeHeld}/${maxTimeExtensionDivisions}).`);
                         notesToStopTimeLimit.push(note);
                     }
                 }
-                // Reset time if note is active but NOT extended (e.g. finished extending last step)
+                // Reset time if note is active but NOT extended
                 else if (!state.isExtended) {
-                    state.timeHeldDivisions = 0;
-                    state.chordsHeldCount = 0; // Also reset chord count if not extended
+                    // Only update if time or count is not already 0
+                    if (state.timeHeldDivisions !== 0 || state.chordsHeldCount !== 0) {
+                        ActiveNoteManager.updateNoteState(note, {
+                            timeHeldDivisions: 0,
+                            chordsHeldCount: 0
+                        });
+                    }
                 }
             });
             // Stop notes exceeding time limit *before* processing current step's notes
             notesToStopTimeLimit.forEach(note => {
-                if (activeArpNotes.has(note)) {
-                    const state = activeArpNotes.get(note);
+                // *** Refactor: Use manager's map accessor and stopNote ***
+                const state = ActiveNoteManager.getActiveNotesMap().get(note);
+                if (state) {
                     // Force stop even if it was extended
-                    state.isExtended = false; // Mark as not extended anymore
-                    stopNote(note, state.outputChannel); // Send note off and remove
+                    ActiveNoteManager.updateNoteState(note, {
+                        isExtended: false
+                    }); // Mark as not extended anymore
+                    ActiveNoteManager.stopNote(note, state.outputChannel); // Send note off and remove
                 }
             });
 
@@ -2793,13 +2858,14 @@
 
 
         /**
-         * Plays a single note or an array of notes using the helper functions.
+         * Plays a single note or an array of notes using the ActiveNoteManager.
          * Handles sub-arpeggiation and ChordN Gate Extension logic.
          * @param {number|number[]} notesOrChord - MIDI note number or array of MIDI note numbers to play.
          * @param {string} [subArpModeOverride] - Optional sub-arpeggiation mode override.
          */
         function playNotes(notesOrChord, subArpModeOverride = subArpMode) {
-            if (!midiOutput) return;
+            // *** Refactor: No direct midiOutput check needed, manager handles it ***
+            // if (!midiOutput) return;
 
             const outputChannel = parseInt(mpeGlobalOutputChannel) - 1; // Base channel 0-15
             const notesArray = Array.isArray(notesOrChord) ? notesOrChord : [notesOrChord];
@@ -2861,14 +2927,17 @@
                     const delay = noteSpacing * index;
 
                     setTimeout(() => {
-                        // Check if note is ALREADY active and extended from the main chord before starting sub-arp instance
-                        // This avoids restarting an already held note just for sub-arp
-                        if (!activeArpNotes.has(expandedNote) || !activeArpNotes.get(expandedNote).isExtended) {
-                            startNote(expandedNote, velocity, outputChannel);
+                        // *** Refactor: Use manager methods ***
+                        const isActive = ActiveNoteManager.hasNote(expandedNote);
+                        const currentState = isActive ? ActiveNoteManager.getActiveNotesMap().get(expandedNote) : null;
+                        const isExtended = isActive && currentState && currentState.isExtended;
+
+                        // Avoid retriggering notes held by main ChordN extension logic
+                        if (!isExtended) {
+                            ActiveNoteManager.startNote(expandedNote, velocity, outputChannel);
                             const subArpGateDurationMs = calculateGateDuration(noteSpacing > 0 ? noteSpacing : clockDivisionDurationMs, gateLengthPercentage, 1);
-                            scheduleNoteOff(expandedNote, subArpGateDurationMs, outputChannel);
+                            ActiveNoteManager.scheduleNoteOff(expandedNote, subArpGateDurationMs, outputChannel);
                         } else {
-                            // Note was already held (extended), sub-arp doesn't retrigger it, just skips scheduling off
                             // console.log(`Sub-arp skipping already extended note: ${expandedNote}`);
                         }
                     }, delay);
@@ -2882,67 +2951,76 @@
 
                     const pressure = notePressures.get(originalNote) || defaultNotePressure;
                     const velocity = calculateVelocity(pressure);
-                    const noteIsActive = activeArpNotes.has(expandedNote);
-                    const currentState = noteIsActive ? activeArpNotes.get(expandedNote) : null;
+
+                    // *** Refactor: Use manager methods ***
+                    const noteIsActive = ActiveNoteManager.hasNote(expandedNote);
+                    const currentState = noteIsActive ? ActiveNoteManager.getActiveNotesMap().get(expandedNote) : null;
 
                     // --- Gate Extension Logic ---
-                    let shouldExtend = false;
                     const isInNextChord = (arpMode === 'chordN' && nextPlayedInfo.nextChordNotes?.includes(expandedNote));
 
                     if (noteIsActive && currentState) {
                         // --- Logic for ALREADY ACTIVE note ---
-                        cancelNoteOff(expandedNote); // Essential: Cancel pending off from previous step/decision
-                        currentState.timeHeldDivisions++; // Increment time regardless
+                        ActiveNoteManager.cancelNoteOff(expandedNote); // Essential: Cancel pending off
 
                         // Check if we CAN continue extending
-                        const canContinueExtendingCount = currentState.chordsHeldCount < (maxChordExtension - 1); // e.g., if max=2, count must be 0. If max=3, count must be 0 or 1.
-                        const canContinueExtendingTime = (currentState.timeHeldDivisions + nextPlayedInfo.stepsToNextChord) <= maxTimeExtensionDivisions;
+                        const canContinueExtendingCount = currentState.chordsHeldCount < (maxChordExtension - 1);
+                        // Check time including the steps *to* the next chord
+                        const estimatedTimeHeldAtNextChord = currentState.timeHeldDivisions + nextPlayedInfo.stepsToNextChord;
+                        const canContinueExtendingTime = estimatedTimeHeldAtNextChord <= maxTimeExtensionDivisions;
+
                         const continueExtending = arpMode === 'chordN' && isInNextChord && canContinueExtendingCount && canContinueExtendingTime;
 
                         if (continueExtending) {
-                            // Continue extending
-                            currentState.isExtended = true;
-                            currentState.chordsHeldCount++;
-                            currentState.noteOffTimeoutId = null; // Ensure no timeout
-                            // console.log(`Extended note ${expandedNote} (Chords: ${currentState.chordsHeldCount}, Time: ${currentState.timeHeldDivisions})`);
+                            // Continue extending: update state via manager
+                            ActiveNoteManager.updateNoteState(expandedNote, {
+                                isExtended: true,
+                                chordsHeldCount: currentState.chordsHeldCount + 1,
+                                noteOffTimeoutId: null // Ensure no timeout
+                                // timeHeldDivisions is updated at the start of arpStep
+                            });
+                            // console.log(`Extended note ${expandedNote} (Chords: ${currentState.chordsHeldCount + 1})`);
                         } else {
                             // Stop extending (or was never extended), schedule normal note off
-                            currentState.isExtended = false;
-                            currentState.chordsHeldCount = 0; // Reset count
+                            ActiveNoteManager.updateNoteState(expandedNote, {
+                                isExtended: false,
+                                chordsHeldCount: 0 // Reset count if stopping extension
+                                // timeHeldDivisions will be reset at start of next arpStep if not extended
+                            });
                             const gateDurationMs = calculateGateDuration(clockDivisionDurationMs, gateLengthPercentage, currentGateMultiplier);
-                            scheduleNoteOff(expandedNote, gateDurationMs, outputChannel);
+                            ActiveNoteManager.scheduleNoteOff(expandedNote, gateDurationMs, outputChannel);
                             // console.log(`Stopped/Not extending ${expandedNote}, scheduling off in ${gateDurationMs.toFixed(0)}ms`);
                         }
-                        updatePlaybackKeyboardKey(expandedNote); // Update visuals based on new state
 
                     } else {
                         // --- Logic for NEWLY STARTED note ---
                         // Check if we SHOULD start extending this new note
-                        const canStartExtending = maxChordExtension > 1; // Need at least 2 to allow any extension
-                        const canStartTime = (nextPlayedInfo.stepsToNextChord) <= maxTimeExtensionDivisions; // Time check uses 0 for current timeHeld
+                        const canStartExtending = maxChordExtension > 1;
+                        // Time check uses 0 for current timeHeld + steps to next
+                        const canStartTime = nextPlayedInfo.stepsToNextChord <= maxTimeExtensionDivisions;
                         const startExtending = arpMode === 'chordN' && isInNextChord && canStartExtending && canStartTime;
 
-                        // Start the note regardless
-                        startNote(expandedNote, velocity, outputChannel);
-                        const newState = activeArpNotes.get(expandedNote); // Get the newly created state
+                        // Start the note regardless via manager
+                        ActiveNoteManager.startNote(expandedNote, velocity, outputChannel);
+                        // Get the newly created state (startNote adds it)
+                        const newState = ActiveNoteManager.getActiveNotesMap().get(expandedNote);
 
                         if (startExtending && newState) {
-                            // Start extending immediately
-                            newState.isExtended = true;
-                            newState.chordsHeldCount = 1; // It's being held for the *first* time *into* the next chord
-                            newState.timeHeldDivisions = 0; // Starts at 0 for this hold period
-                            newState.noteOffTimeoutId = null; // No timeout scheduled
+                            // Start extending immediately: update state via manager
+                            ActiveNoteManager.updateNoteState(expandedNote, {
+                                isExtended: true,
+                                chordsHeldCount: 1, // First extension cycle
+                                timeHeldDivisions: 0, // Starts at 0
+                                noteOffTimeoutId: null // No timeout scheduled
+                            });
                             // console.log(`Started extended note ${expandedNote}`);
                         } else if (newState) {
                             // Start with normal gate if not extending
-                            newState.isExtended = false; // Ensure state is correct
-                            newState.chordsHeldCount = 0;
-                            newState.timeHeldDivisions = 0;
+                            // State is already set correctly by startNote and updateNoteState defaults
                             const gateDurationMs = calculateGateDuration(clockDivisionDurationMs, gateLengthPercentage, currentGateMultiplier);
-                            scheduleNoteOff(expandedNote, gateDurationMs, outputChannel);
+                            ActiveNoteManager.scheduleNoteOff(expandedNote, gateDurationMs, outputChannel);
                             // console.log(`Started normal note ${expandedNote}, scheduling off in ${gateDurationMs.toFixed(0)}ms`);
                         }
-                        updatePlaybackKeyboardKey(expandedNote); // Update visuals
                     }
                 }); // End notesArray.forEach
             } // End else (play simultaneously)
@@ -2952,17 +3030,10 @@
         /**
          * Sends MIDI note off messages for all notes currently managed by the arpeggiator.
          * Clears the activeArpNotes map.
+         * (This function is now OBSOLETE - use ActiveNoteManager.allNotesOff())
          */
-        function allNotesOff() {
-            if (activeArpNotes.size > 0) {
-                // console.log("Sending All Notes Off for Arp Notes:", Array.from(activeArpNotes.keys()));
-                activeArpNotes.forEach((state, note) => {
-                    stopNote(note, state.outputChannel); // Use stopNote for proper cleanup
-                });
-                activeArpNotes.clear(); // Ensure map is cleared
-            }
-            // We don't control notes held directly via MIDI/UI here, only arp-generated ones.
-        }
+        // function allNotesOff() { ... }
+
 
         /**
          * Updates the playback display with the latest arpeggiator step.
@@ -3211,7 +3282,7 @@
                     highlightPianoKeys(noteOrChord); // Highlight single note
                 }
             }
-            // Playback keyboard highlighting is now driven by the activeArpNotes map updates
+            // Playback keyboard highlighting is now driven by the ActiveNoteManager state changes
         }
 
         /**
@@ -3266,8 +3337,11 @@
             const isHeldMIDI = heldNotesMIDI.has(note);
             // Check if it's an octave-expanded note (in heldNotes but not in rawHeldNotes)
             const isHeldOctave = heldNotes.includes(note) && !rawHeldNotes.includes(note);
-            const isActiveArp = activeArpNotes.has(note);
-            const isGateExtended = isActiveArp && activeArpNotes.get(note).isExtended;
+
+            // *** Refactor: Check active/extended status via manager ***
+            const isActiveArp = ActiveNoteManager.hasNote(note);
+            const arpNoteState = isActiveArp ? ActiveNoteManager.getActiveNotesMap().get(note) : null;
+            const isGateExtended = isActiveArp && arpNoteState && arpNoteState.isExtended;
 
             // Remove potentially conflicting classes first
             keyElement.classList.remove('key-held-ui', 'key-held-midi', 'key-held-octave-expanded', 'key-current', 'key-gate-extended');
@@ -3294,28 +3368,22 @@
          * @param {number|number[]} notes - MIDI note number or array of MIDI note numbers to highlight.
          */
         // function highlightPlaybackPianoKeys(notes) {
-        //  // This logic is now handled by updates based on activeArpNotes
+        //  // This logic is now handled by updates based on ActiveNoteManager state
         // }
 
         /**
          * Unhighlights the currently highlighted piano key on the playback keyboard (OBSOLETE).
          */
         function unhighlightPlaybackPianoKeys() {
-            // This is implicitly handled by updatePlaybackKeyboardKey removing 'key-current'
-            // No need to manually track highlightedPlaybackPianoKey anymore
-            const currentHighlightedKeys = document.querySelectorAll('#playbackKeyboardDisplay .playback-key.key-current');
+            // This is implicitly handled by updatePlaybackKeyboardKey removing 'key-current'/'key-gate-extended'
+            const currentHighlightedKeys = document.querySelectorAll('#playbackKeyboardDisplay .playback-key.key-current, #playbackKeyboardDisplay .playback-key.key-gate-extended');
             currentHighlightedKeys.forEach(key => {
-                key.classList.remove('key-current');
-                // Re-evaluate state after removing 'current'
-                updatePlaybackKeyboardKey(parseInt(key.dataset.note));
-            });
-            const currentExtendedKeys = document.querySelectorAll('#playbackKeyboardDisplay .playback-key.key-gate-extended');
-            currentExtendedKeys.forEach(key => {
-                key.classList.remove('key-gate-extended');
-                // Re-evaluate state after removing 'extended'
+                key.classList.remove('key-current', 'key-gate-extended');
+                // Re-evaluate state after removing 'current'/'extended'
                 updatePlaybackKeyboardKey(parseInt(key.dataset.note));
             });
         }
+
 
         /**
          * Clears all highlights from the playback piano keyboard (held and current notes) (OBSOLETE).
@@ -3437,6 +3505,12 @@
         updateTempoDisplay();
         updatePatternControlsState();
         updateRhythmControlsState();
+
+        // *** Refactor: Initialize ActiveNoteManager ***
+        // Needs to happen *after* MIDI setup potentially selects an output
+        // and *after* UI update functions are defined.
+        // The initialization is now handled within onMIDISuccess/onMIDIFailure
+        // and updated via selectMidiOutput.
     </script>
 </body>
 </html>
