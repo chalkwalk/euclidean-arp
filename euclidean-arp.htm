@@ -5,287 +5,64 @@
         /* Styles remain the same */
         body { font-family: sans-serif; }
         .rhythm-display { display: flex; margin-bottom: 10px; }
-        .rhythm-step {
-            width: 25px; /* Slightly wider steps for better visual clarity */
-            height: 25px; /* Slightly taller steps for better visual clarity */
-            border: 1px solid #ccc; /* Reduced border weight */
-            text-align: center;
-            line-height: 25px; /* Match line-height to height */
-            font-size: 12px;
-            margin-right: 2px; /* Add spacing between steps */
-            border-radius: 3px; /* Slightly rounded corners for a softer look */
-            background-color: #f0f0f0; /* Default step background color */
-            color: #333; /* Darker text for better contrast */
-        }
-        .rhythm-step.beat { background-color: #b2f0b2; border-color: #8fcc8f; color: #005000; /* Muted green for beats */ }
-        .rhythm-step.rest { background-color: #f0b2b2; border-color: #cc8f8f; color: #500000; /* Muted red for rests */ }
-        .rhythm-step.skip { background-color: #b2b2f0; border-color: #8f8fcc; color: #000050; /* Muted blue for skips */ }
-        .rhythm-step.note { background-color: #f0f0b2; border-color: #ccf08f; color: #505000; /* Muted yellow for notes */ }
-        .rhythm-step.current-step { border: 2px solid blue; /* Stronger current step highlight */ }
-        .rhythm-step.disabled-step {
-            background-color: #e0e0e0; /* Greyed out background */
-            border-color: #bbb;       /* Lighter border */
-            color: #999;              /* Lighter text color */
-        }
-        .rhythm-step.gate-extended-step {
-            background-color: #cceeff; /* Light blue for gate extension */
-            border-color: #aaccdd;
-        }
-
-
-        .parameter-group { margin-bottom: 10px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; /* Added border and padding to parameter groups */ background-color: #fafafa; /* Lighter background for parameter groups */ }
-        .parameter-group h3 { margin-top: 0; color: #555; /* Slightly darker heading text */ }
+        .rhythm-step { width: 25px; height: 25px; border: 1px solid #ccc; text-align: center; line-height: 25px; font-size: 12px; margin-right: 2px; border-radius: 3px; background-color: #f0f0f0; color: #333; }
+        .rhythm-step.beat { background-color: #b2f0b2; border-color: #8fcc8f; color: #005000; }
+        .rhythm-step.rest { background-color: #f0b2b2; border-color: #cc8f8f; color: #500000; }
+        .rhythm-step.skip { background-color: #b2b2f0; border-color: #8f8fcc; color: #000050; }
+        .rhythm-step.note { background-color: #f0f0b2; border-color: #ccf08f; color: #505000; }
+        .rhythm-step.current-step { border: 2px solid blue; }
+        .rhythm-step.disabled-step { background-color: #e0e0e0; border-color: #bbb; color: #999; }
+        .rhythm-step.gate-extended-step { background-color: #cceeff; border-color: #aaccdd; }
+        .parameter-group { margin-bottom: 10px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #fafafa; }
+        .parameter-group h3 { margin-top: 0; color: #555; }
         .note-selector { margin-bottom: 10px; }
-        .piano-keyboard { display: flex; border: 1px solid #aaa; border-radius: 5px; overflow: hidden; /* Added border to keyboard */ }
-        .key {
-            height: 80px;
-            border-left: 1px solid #ddd; /* Lighter key borders */
-            border-bottom: 1px solid #bbb; /* Slightly darker bottom border for depth */
-            box-sizing: border-box;
-            cursor: pointer;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            padding-bottom: 5px;
-            font-size: 10px;
-            user-select: none; /* Prevent text selection on click */
-            transition: background-color 0.1s ease; /* Smooth background color transition */
-        }
-        .white-key {
-            width: 30px;
-            background-color: white;
-            color: black;
-        }
-        .black-key {
-            width: 20px;
-            background-color: black;
-            color: white;
-            height: 55px;
-            margin-left: -10px;
-            margin-right: -10px;
-            z-index: 1; /* Ensure black keys are on top */
-            border-bottom: 1px solid #333; /* Darker bottom border for black keys */
-        }
-        .key.key-held-ui {
-            background-color: #aaddff; /* Distinct light blue for UI held keys */
-            color: black; /* Ensure text is readable on highlight */
-            border-bottom: unset;
-        }
-        .key.key-held-midi {
-            background-color: #aaffaa; /* Distinct light green for MIDI held keys */
-            color: black; /* Ensure text is readable on highlight */
-            border-bottom: unset;
-        }
-        .key.key-current {
-            border: 2px solid #ccc; /* Example highlight style */
-            background-color: #ffddaa; /* Softer yellow for current note highlight */
-            border-bottom: unset;
-        }
-
-        .playback-keyboard-container { display: flex; justify-content: center; margin-bottom: 10px; } /* Center the playback keyboard */
-        .playback-keyboard { display: flex; border: 1px solid #aaa; border-radius: 5px; overflow: hidden; width: 600px; height: 40px; /* Fixed width and height for mini keyboard */ }
-        .playback-key {
-            height: 100%; /* Keys fill the height of the playback keyboard */
-            border-left: 1px solid #ddd;
-            border-bottom: 1px solid #bbb;
-            box-sizing: border-box;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            padding-bottom: 2px; /* Reduced padding */
-            font-size: 8px; /* Smaller font size */
-            user-select: none;
-            transition: background-color 0.1s ease;
-            cursor: default; /* Non-interactive cursor */
-        }
-        .playback-white-key {
-            width: calc(600px / 25 * 3/5); /* Adjust width based on total width and number of keys */
-            background-color: white;
-            color: black;
-        }
-        .playback-black-key {
-            width: calc(600px / 25 * 2/5); /* Adjust width based on total width and number of keys */
-            background-color: black;
-            color: white;
-            height: 70%; /* Black keys are shorter */
-            margin-left: calc(-600px / 25 * 1/5);
-            margin-right: calc(-600px / 25 * 1/5);
-            z-index: 1;
-            border-bottom: 1px solid #333;
-        }
-        .playback-key.key-held-ui { /* Style for UI held notes on playback keyboard */
-            background-color: #99ccee; /* Lighter shade of blue */
-            border-bottom: unset;
-        }
-        .playback-key.key-held-midi { /* Style for MIDI held notes on playback keyboard */
-            background-color: #ccffcc; /* Lighter shade of green */
-            border-bottom: unset;
-        }
-        .playback-key.key-held-octave-expanded { /* New style for octave-expanded notes */
-            background-color: #cceeff; /* A very light blue/grey, less prominent than UI/MIDI held */
-            color: black; /* Ensure text is readable if you decide to add text to these keys */
-            border-bottom: unset;
-        }
-        .playback-key.key-current { /* Style for currently playing notes on playback keyboard */
-            background-color: #ffddaa; /* Very light yellow */
-            border: 1px solid #ccc; /* Add border to current key on playback keyboard */
-            border-bottom: unset;
-        }
-        /* Style for ChordN gate extended notes on playback keyboard */
-        .playback-key.key-gate-extended {
-            background-color: #ffddee; /* Light pink/purple to indicate held */
-            border-bottom: unset;
-        }
-
-        .playback-display { display: flex; overflow-x: hidden; border: 1px solid #ccc; height: 30px; margin-bottom: 10px; background-color: #eee; border-radius: 3px; /* Added background and border-radius to playback display */ padding-left: 5px; }
-        .playback-step {
-            width: 20px;
-            height: 20px;
-            border: 1px solid #ddd; /* Lighter border for playback steps */
-            margin-right: 2px;
-            text-align: center;
-            line-height: 20px;
-            font-size: 10px;
-            border-radius: 2px; /* Slightly rounded corners for playback steps */
-            background-color: #fff; /* Default playback step background */
-        }
-        .playback-step.note { background-color: #ffffdd; /* Light yellow for note playback */ }
-        .playback-step.rest { background-color: #ffdddd; /* Light red for rest playback */ }
-        .playback-step.skip { background-color: #ddddff; /* Light blue for skip playback */ }
+        .piano-keyboard { display: flex; border: 1px solid #aaa; border-radius: 5px; overflow: hidden; }
+        .key { height: 80px; border-left: 1px solid #ddd; border-bottom: 1px solid #bbb; box-sizing: border-box; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; font-size: 10px; user-select: none; transition: background-color 0.1s ease; }
+        .white-key { width: 30px; background-color: white; color: black; }
+        .black-key { width: 20px; background-color: black; color: white; height: 55px; margin-left: -10px; margin-right: -10px; z-index: 1; border-bottom: 1px solid #333; }
+        .key.key-held-ui { background-color: #aaddff; color: black; border-bottom: unset; }
+        .key.key-held-midi { background-color: #aaffaa; color: black; border-bottom: unset; }
+        .key.key-current { border: 2px solid #ccc; background-color: #ffddaa; border-bottom: unset; }
+        .playback-keyboard-container { display: flex; justify-content: center; margin-bottom: 10px; }
+        .playback-keyboard { display: flex; border: 1px solid #aaa; border-radius: 5px; overflow: hidden; width: 600px; height: 40px; }
+        .playback-key { height: 100%; border-left: 1px solid #ddd; border-bottom: 1px solid #bbb; box-sizing: border-box; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; font-size: 8px; user-select: none; transition: background-color 0.1s ease; cursor: default; }
+        .playback-white-key { width: calc(600px / 25 * 3/5); background-color: white; color: black; }
+        .playback-black-key { width: calc(600px / 25 * 2/5); background-color: black; color: white; height: 70%; margin-left: calc(-600px / 25 * 1/5); margin-right: calc(-600px / 25 * 1/5); z-index: 1; border-bottom: 1px solid #333; }
+        .playback-key.key-held-ui { background-color: #99ccee; border-bottom: unset; }
+        .playback-key.key-held-midi { background-color: #ccffcc; border-bottom: unset; }
+        .playback-key.key-held-octave-expanded { background-color: #cceeff; color: black; border-bottom: unset; }
+        .playback-key.key-current { background-color: #ffddaa; border: 1px solid #ccc; border-bottom: unset; }
+        .playback-key.key-gate-extended { background-color: #ffddee; border-bottom: unset; }
+        .playback-display { display: flex; overflow-x: hidden; border: 1px solid #ccc; height: 30px; margin-bottom: 10px; background-color: #eee; border-radius: 3px; padding-left: 5px; }
+        .playback-step { width: 20px; height: 20px; border: 1px solid #ddd; margin-right: 2px; text-align: center; line-height: 20px; font-size: 10px; border-radius: 2px; background-color: #fff; }
+        .playback-step.note { background-color: #ffffdd; }
+        .playback-step.rest { background-color: #ffdddd; }
+        .playback-step.skip { background-color: #ddddff; }
         .device-selector { margin-bottom: 10px; }
-        .slider-container {
-            display: flex;
-            align-items: center; /* Vertically align label and slider */
-            margin-bottom: 5px; /* Add spacing between slider containers */
-        }
-        .slider-container label {
-            margin-right: 10px; /* Space between label and slider */
-            width: 120px; /* Wider fixed width for labels to align them */
-            text-align: right; /* Right-align label text */
-            font-size: 0.9em; /* Slightly smaller label font size */
-            color: #666; /* Muted label color */
-        }
-        .slider-container input[type="range"] {
-            width: 300px; /* Adjust slider width as needed */
-        }
-        .number-display {
-            width: 30px; /* Fixed width for number display */
-            text-align: center;
-            margin-left: 5px;
-            font-size: 0.9em; /* Slightly smaller number display font size */
-            color: #777; /* Muted number display color */
-        }
-
-        #tempoBPM { /* Tempo BPM input now serves as display as well */
-            display: inline-block;
-            margin-left: 10px;
-            font-weight: bold;
-            font-size: 1.2em; /* Larger tempo display */
-            color: #333; /* Darker tempo text */
-            border: none; /* Remove border */
-            background-color: transparent; /* Make background transparent */
-            width: auto; /* Adjust width to content */
-            padding: 0; /* Remove padding */
-            text-align: left; /* Align text left */
-        }
-        #tempoBPM:read-only { /* Style for read-only state */
-            cursor: default; /* Default cursor for read-only */
-            color: #777; /* Muted color when read-only */
-            font-weight: normal; /* Normal font weight when read-only */
-        }
-
-        #midiStatus {
-            margin-bottom: 10px;
-            font-size: 0.9em;
-            color: #777;
-        }
-        h1 {
-            color: #333;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 5px;
-        }
-        h3 {
-            margin-top: 0;
-            color: #555;
-        }
-        label {
-            font-size: 0.95em;
-            color: #444;
-            margin-right: 5px;
-        }
-        select, input[type="number"], input[type="range"], button, input[type="checkbox"] {
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            font-size: 0.9em;
-            margin-bottom: 5px;
-        }
-        button {
-            background-color: #eee;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        button:hover {
-            background-color: #ddd;
-        }
-        button:disabled {
-            background-color: #f0f0f0;
-            color: #999;
-            cursor: default;
-        }
-        #startButton.playing {
-            background-color: lightgreen;
-        }
-        #stopButton.playing {
-            background-color: lightcoral;
-        }
-
-        /* --- TAB STYLES --- */
-        .tab-container {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            overflow: hidden;
-            background-color: #fafafa;
-            margin-bottom: 10px;
-        }
-
-        .tab-buttons {
-            display: flex;
-            background-color: #eee;
-            border-bottom: 1px solid #ccc;
-        }
-
-        .tab-button {
-            padding: 10px 15px;
-            border: none;
-            background-color: transparent;
-            cursor: pointer;
-            border-right: 1px solid #ccc;
-            font-size: 0.9em;
-            color: #555;
-        }
-
-        .tab-button:last-child {
-            border-right: none;
-        }
-
-        .tab-button.active {
-            background-color: #fafafa;
-            color: #333;
-            font-weight: bold;
-        }
-
-        .tab-content {
-            padding: 10px;
-        }
-
-        .tab-pane {
-            display: none; /* Initially hide all tab panes */
-        }
-
-        .tab-pane.active {
-            display: block; /* Show active tab pane */
-        }
+        .slider-container { display: flex; align-items: center; margin-bottom: 5px; }
+        .slider-container label { margin-right: 10px; width: 120px; text-align: right; font-size: 0.9em; color: #666; }
+        .slider-container input[type="range"] { width: 300px; }
+        .number-display { width: 30px; text-align: center; margin-left: 5px; font-size: 0.9em; color: #777; }
+        #tempoBPM { display: inline-block; margin-left: 10px; font-weight: bold; font-size: 1.2em; color: #333; border: none; background-color: transparent; width: auto; padding: 0; text-align: left; }
+        #tempoBPM:read-only { cursor: default; color: #777; font-weight: normal; }
+        #midiStatus { margin-bottom: 10px; font-size: 0.9em; color: #777; }
+        h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
+        h3 { margin-top: 0; color: #555; }
+        label { font-size: 0.95em; color: #444; margin-right: 5px; }
+        select, input[type="number"], input[type="range"], button, input[type="checkbox"] { padding: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 0.9em; margin-bottom: 5px; }
+        button { background-color: #eee; cursor: pointer; transition: background-color 0.2s ease; }
+        button:hover { background-color: #ddd; }
+        button:disabled { background-color: #f0f0f0; color: #999; cursor: default; }
+        #startButton.playing { background-color: lightgreen; }
+        #stopButton.playing { background-color: lightcoral; }
+        .tab-container { border: 1px solid #ccc; border-radius: 5px; overflow: hidden; background-color: #fafafa; margin-bottom: 10px; }
+        .tab-buttons { display: flex; background-color: #eee; border-bottom: 1px solid #ccc; }
+        .tab-button { padding: 10px 15px; border: none; background-color: transparent; cursor: pointer; border-right: 1px solid #ccc; font-size: 0.9em; color: #555; }
+        .tab-button:last-child { border-right: none; }
+        .tab-button.active { background-color: #fafafa; color: #333; font-weight: bold; }
+        .tab-content { padding: 10px; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
     </style>
 </head>
 <body>
@@ -347,22 +124,10 @@
                     <label for="mpeGlobalInputChannel">MPE Global Input Channel:</label>
                     <select id="mpeGlobalInputChannel" title="Set the MIDI channel for MPE global control messages, or Omni to listen to all channels.">
                         <option value="omni">Omni</option>
-                        <option value="1">Channel 1</option>
-                        <option value="2">Channel 2</option>
-                        <option value="3">Channel 3</option>
-                        <option value="4">Channel 4</option>
-                        <option value="5">Channel 5</option>
-                        <option value="6">Channel 6</option>
-                        <option value="7">Channel 7</option>
-                        <option value="8">Channel 8</option>
-                        <option value="9">Channel 9</option>
-                        <option value="10">Channel 10</option>
-                        <option value="11">Channel 11</option>
-                        <option value="12">Channel 12</option>
-                        <option value="13">Channel 13</option>
-                        <option value="14">Channel 14</option>
-                        <option value="15">Channel 15</option>
-                        <option value="16">Channel 16</option>
+                        <option value="1">Channel 1</option> <option value="2">Channel 2</option> <option value="3">Channel 3</option> <option value="4">Channel 4</option>
+                        <option value="5">Channel 5</option> <option value="6">Channel 6</option> <option value="7">Channel 7</option> <option value="8">Channel 8</option>
+                        <option value="9">Channel 9</option> <option value="10">Channel 10</option> <option value="11">Channel 11</option> <option value="12">Channel 12</option>
+                        <option value="13">Channel 13</option> <option value="14">Channel 14</option> <option value="15">Channel 15</option> <option value="16">Channel 16</option>
                     </select>
                 </div>
 
@@ -382,22 +147,10 @@
                 <div class="slider-container" title="MIDI channel for MPE global output or base channel for non-MPE.">
                     <label for="mpeGlobalOutputChannel">MPE Global Output / Base Channel:</label>
                     <select id="mpeGlobalOutputChannel" title="Set the MIDI channel for MPE global output or the base channel for non-MPE output.">
-                        <option value="1">Channel 1</option>
-                        <option value="2">Channel 2</option>
-                        <option value="3">Channel 3</option>
-                        <option value="4">Channel 4</option>
-                        <option value="5">Channel 5</option>
-                        <option value="6">Channel 6</option>
-                        <option value="7">Channel 7</option>
-                        <option value="8">Channel 8</option>
-                        <option value="9">Channel 9</option>
-                        <option value="10">Channel 10</option>
-                        <option value="11">Channel 11</option>
-                        <option value="12">Channel 12</option>
-                        <option value="13">Channel 13</option>
-                        <option value="14">Channel 14</option>
-                        <option value="15">Channel 15</option>
-                        <option value="16">Channel 16</option>
+                        <option value="1">Channel 1</option> <option value="2">Channel 2</option> <option value="3">Channel 3</option> <option value="4">Channel 4</option>
+                        <option value="5">Channel 5</option> <option value="6">Channel 6</option> <option value="7">Channel 7</option> <option value="8">Channel 8</option>
+                        <option value="9">Channel 9</option> <option value="10">Channel 10</option> <option value="11">Channel 11</option> <option value="12">Channel 12</option>
+                        <option value="13">Channel 13</option> <option value="14">Channel 14</option> <option value="15">Channel 15</option> <option value="16">Channel 16</option>
                     </select>
                 </div>
             </fieldset>
@@ -462,141 +215,81 @@
                 <div class="slider-container" title="Clock division for arpeggiator step timing.">
                     <label for="clockDivision">Clock Division:</label>
                     <select id="clockDivision" title="Set the clock division to control the speed of the arpeggio steps.">
-                        <option value="1/1">1/1</option>
-                        <option value="1/2">1/2</option>
-                        <option value="1/4" selected="selected">1/4</option>
-                        <option value="1/8">1/8</option>
-                        <option value="1/16">1/16</option>
-                        <option value="1/32">1/32</option>
-                        <option value="1/2T">1/2T</option>
-                        <option value="1/4T">1/4T</option>
-                        <option value="1/8T">1/8T</option>
-                        <option value="1/16T">1/16T</option>
-                        <option value="1/32T">1/32T</option>
+                        <option value="1/1">1/1</option> <option value="1/2">1/2</option> <option value="1/4" selected="selected">1/4</option>
+                        <option value="1/8">1/8</option> <option value="1/16">1/16</option> <option value="1/32">1/32</option>
+                        <option value="1/2T">1/2T</option> <option value="1/4T">1/4T</option> <option value="1/8T">1/8T</option>
+                        <option value="1/16T">1/16T</option> <option value="1/32T">1/32T</option>
                     </select>
                 </div>
 
                 <div class="slider-container" title="Arpeggio mode determines the order notes are played.">
                     <label for="arpMode">Arp Mode:</label>
                     <select id="arpMode" title="Select the arpeggio playback mode.">
-                        <option value="up" selected="selected">Up</option>
-                        <option value="down">Down</option>
-                        <option value="upDown">Up/Down</option>
-                        <option value="upDownInclusive">Up/Down (Incl.)</option>
-                        <option value="random">Random</option>
-                        <option value="converge">Converge</option>
-                        <option value="diverge">Diverge</option>
-                        <option value="played">Played</option>
-                        <option value="shuffled">Shuffled</option>
-                        <option value="stableShuffled">Stable Shuffled</option>
-                        <option value="chord">Chord</option>
-                        <option value="chordN">ChordN</option>
-                        <option value="convergeDiverge">Converge/Diverge</option>
-                        <option value="convergeDivergeInclusive">Converge/Diverge (Incl.)</option>
-                        <option value="walk">Walk</option>
-                        <option value="normalWalk">Normal Walk</option>
+                        <option value="up" selected="selected">Up</option> <option value="down">Down</option> <option value="upDown">Up/Down</option> <option value="upDownInclusive">Up/Down (Incl.)</option>
+                        <option value="random">Random</option> <option value="converge">Converge</option> <option value="diverge">Diverge</option>
+                        <option value="played">Played</option> <option value="shuffled">Shuffled</option> <option value="stableShuffled">Stable Shuffled</option>
+                        <option value="chord">Chord</option> <option value="chordN">ChordN</option>
+                        <option value="convergeDiverge">Converge/Diverge</option> <option value="convergeDivergeInclusive">Converge/Diverge (Incl.)</option>
+                        <option value="walk">Walk</option> <option value="normalWalk">Normal Walk</option>
                     </select>
                 </div>
 
                 <div id="chordNControls" style="display: none;">
-                    <div class="slider-container" title="Number of notes in each chord for ChordN mode.">
-                        <label for="chordNValue">N:</label>
-                        <input type="range" id="chordNValue" value="2" min="1" max="16" step="1" title="Set the number of notes per chord in ChordN arpeggio mode.">
-                        <span id="chordNValueDisplay" class="number-display">2</span>
-                    </div>
-                    <div class="slider-container" title="Ordering mode for ChordN chords.">
-                        <label for="chordNOrdering">ChordN Ordering:</label>
-                        <select id="chordNOrdering" title="Select the ordering mode for ChordN chords.">
-                            <option value="up">Up</option>
-                            <option value="down">Down</option>
-                            <option value="upDown">Up/Down</option>
-                            <option value="upDownInclusive">Up/Down (Incl.)</option>
-                            <option value="converge">Converge</option>
-                            <option value="diverge">Diverge</option>
-                        </select>
-                    </div>
-                    <div class="slider-container" title="Maximum number of consecutive chords a note can be held across in ChordN mode. 1 means no extension.">
-                        <label for="maxChordExtension">Max Chord Extend:</label>
-                        <input type="range" id="maxChordExtension" value="2" min="1" max="16" step="1" title="Maximum number of consecutive chords a note can be held across in ChordN mode.">
-                        <span id="maxChordExtensionValue" class="number-display">2</span>
-                    </div>
-                    <div class="slider-container" title="Maximum number of clock divisions a note's gate can be extended in ChordN mode.">
-                        <label for="maxTimeExtension">Max Time Extend (Divs):</label>
-                        <input type="range" id="maxTimeExtension" value="16" min="1" max="64" step="1" title="Maximum number of clock divisions a note's gate can be extended in ChordN mode.">
-                        <span id="maxTimeExtensionValue" class="number-display">16</span>
-                    </div>
+                     <div class="slider-container" title="Number of notes in each chord for ChordN mode.">
+                         <label for="chordNValue">N:</label> <input type="range" id="chordNValue" value="2" min="1" max="16" step="1"> <span id="chordNValueDisplay" class="number-display">2</span>
+                     </div>
+                     <div class="slider-container" title="Ordering mode for ChordN chords.">
+                         <label for="chordNOrdering">ChordN Ordering:</label> <select id="chordNOrdering"><option value="up">Up</option><option value="down">Down</option><option value="upDown">Up/Down</option><option value="upDownInclusive">Up/Down (Incl.)</option><option value="converge">Converge</option><option value="diverge">Diverge</option></select>
+                     </div>
+                     <div class="slider-container" title="Maximum number of consecutive chords a note can be held across in ChordN mode. 1 means no extension.">
+                         <label for="maxChordExtension">Max Chord Extend:</label> <input type="range" id="maxChordExtension" value="2" min="1" max="16" step="1"> <span id="maxChordExtensionValue" class="number-display">2</span>
+                     </div>
+                     <div class="slider-container" title="Maximum number of clock divisions a note's gate can be extended in ChordN mode.">
+                         <label for="maxTimeExtension">Max Time Extend (Divs):</label> <input type="range" id="maxTimeExtension" value="16" min="1" max="64" step="1"> <span id="maxTimeExtensionValue" class="number-display">16</span>
+                     </div>
                 </div>
 
                 <div id="walkParams" style="display: none;">
-                    <div class="slider-container" title="Skew parameter for Walk arpeggio mode.">
-                        <label for="walkSkew">Walk Skew:</label>
-                        <input type="range" id="walkSkew" value="0" min="-1" max="1" step="0.01" title="Adjust the skew for Walk arpeggio mode, affecting probability of steps.">
-                        <span id="walkSkewValue" class="number-display">0</span>
-                    </div>
-                    <div class="slider-container" id="walkDistanceContainer" style="display: none;">
-                        <label for="walkDistance">Walk Distance:</label>
-                        <input type="range" id="walkDistance" value="0" min="0" max="1" step="0.01" title="Adjust the distance for Normal Walk arpeggio mode, affecting step size.">
-                        <span id="walkDistanceValue" class="number-display">0</span>
-                    </div>
+                     <div class="slider-container" title="Skew parameter for Walk arpeggio mode.">
+                         <label for="walkSkew">Walk Skew:</label> <input type="range" id="walkSkew" value="0" min="-1" max="1" step="0.01"> <span id="walkSkewValue" class="number-display">0</span>
+                     </div>
+                     <div class="slider-container" id="walkDistanceContainer" style="display: none;">
+                         <label for="walkDistance">Walk Distance:</label> <input type="range" id="walkDistance" value="0" min="0" max="1" step="0.01"> <span id="walkDistanceValue" class="number-display">0</span>
+                     </div>
                 </div>
 
                 <div class="slider-container" title="Percentage of clock division used for sub-arpeggiation of chords.">
-                    <label for="subArpScale">Sub Arp Scale (%):</label>
-                    <input type="range" id="subArpScale" value="0" min="0" max="100" step="1" title="Control the timing spread of notes within chords. 0% for no sub-arp, 100% to fill clock division.">
-                    <span id="subArpScaleValue" class="number-display">0</span>
+                    <label for="subArpScale">Sub Arp Scale (%):</label> <input type="range" id="subArpScale" value="0" min="0" max="100" step="1"> <span id="subArpScaleValue" class="number-display">0</span>
                 </div>
                 <div class="slider-container" title="Arpeggio mode for sub-arpeggiation of chords.">
-                    <label for="subArpMode">Sub Arp Mode:</label>
-                    <select id="subArpMode" title="Select the arpeggio mode for sub-arpeggiation within chords.">
-                        <option value="up">Up</option>
-                        <option value="down">Down</option>
-                        <option value="random">Random</option>
-                        <option value="converge">Converge</option>
-                        <option value="diverge">Diverge</option>
-                    </select>
+                    <label for="subArpMode">Sub Arp Mode:</label> <select id="subArpMode"> <option value="up">Up</option> <option value="down">Down</option> <option value="random">Random</option> <option value="converge">Converge</option> <option value="diverge">Diverge</option> </select>
                 </div>
 
                 <div class="slider-container" title="Synchronization mode for the arpeggiator.">
-                    <label for="arpSyncMode">Arp Sync Mode:</label>
-                    <select id="arpSyncMode" title="Choose the synchronization mode for starting and stopping the arpeggiator.">
-                        <option value="free">Free Sync</option>
-                        <option value="key" selected="selected">Key Sync</option>
-                        <option value="transport">Transport Sync (Placeholder)</option>
-                    </select>
+                    <label for="arpSyncMode">Arp Sync Mode:</label> <select id="arpSyncMode"> <option value="free">Free Sync</option> <option value="key" selected="selected">Key Sync</option> <option value="transport">Transport Sync (Placeholder)</option> </select>
                 </div>
 
                 <div class="slider-container" title="Number of octaves to expand held notes across.">
-                    <label for="octaves">Octaves:</label>
-                    <input type="range" id="octaves" value="1" min="1" max="4" step="1" title="Expand the range of arpeggiated notes by adding octaves above the held notes.">
-                    <span id="octavesValue" class="number-display">1</span>
+                    <label for="octaves">Octaves:</label> <input type="range" id="octaves" value="1" min="1" max="4" step="1"> <span id="octavesValue" class="number-display">1</span>
                 </div>
                 <div class="slider-container" title="Base velocity for arpeggiated notes.">
-                    <label for="baseVelocity">Base Velocity:</label>
-                    <input type="range" id="baseVelocity" value="96" min="1" max="127" step="1" title="Set the base velocity for arpeggiated notes. Velocity can be further modified by MPE or aftertouch.">
-                    <span id="baseVelocityValue" class="number-display">96</span>
+                    <label for="baseVelocity">Base Velocity:</label> <input type="range" id="baseVelocity" value="96" min="1" max="127" step="1"> <span id="baseVelocityValue" class="number-display">96</span>
                 </div>
                 <div class="slider-container" title="Maximum velocity for arpeggiated notes.">
-                    <label for="maxVelocity">Max Velocity:</label>
-                    <input type="range" id="maxVelocity" value="127" min="1" max="127" step="1" title="Set the maximum velocity for arpeggiated notes. Used in conjunction with base velocity and pressure.">
-                    <span id="maxVelocityValue" class="number-display">127</span>
+                    <label for="maxVelocity">Max Velocity:</label> <input type="range" id="maxVelocity" value="127" min="1" max="127" step="1"> <span id="maxVelocityValue" class="number-display">127</span>
                 </div>
                 <div class="slider-container" title="Gate length as a percentage of the clock division.">
-                    <label for="gateLength">Gate Length (%):</label>
-                    <input type="range" id="gateLength" value="50" min="1" max="150" step="1" title="Adjust the gate length of arpeggiated notes as a percentage of the clock division duration.">
-                    <span id="gateLengthValue" class="number-display">50</span>
+                    <label for="gateLength">Gate Length (%):</label> <input type="range" id="gateLength" value="50" min="1" max="150" step="1"> <span id="gateLengthValue" class="number-display">50</span>
                 </div>
                 <div class="slider-container" title="Enable gate flex to extend note gates based on rhythm density.">
-                    <input type="checkbox" id="enableGateFlex" title="Enable Gate Flex to make gates longer before rests.">
-                    <label for="enableGateFlex" style="text-align: left; width: auto;">Enable Gate Flex</label>
+                    <input type="checkbox" id="enableGateFlex"> <label for="enableGateFlex" style="text-align: left; width: auto;">Enable Gate Flex</label>
                 </div>
             </fieldset>
         </div>
     </div>
 
     <div class="playback-keyboard-container" title="Visual display of held and playing notes. Not interactive.">
-        <div class="playback-keyboard" id="playbackKeyboardDisplay">
-            <!-- Playback piano keys will be generated here by JavaScript -->
-        </div>
+        <div class="playback-keyboard" id="playbackKeyboardDisplay"></div>
     </div>
 
     <div class="playback-display" id="playbackDisplay" title="Displays the sequence of played notes and rhythms."></div>
@@ -610,16 +303,17 @@
          * Refactored Active Note management (A6).
          * Refactored MIDI Manager (A5).
          * Refactored Note Input Manager (A2).
+         * Refactored Clock Manager (A4).
+         * Refactored Rhythm Manager (A3).
          */
 
         // --- Utility Functions ---
         function arraysAreEqual(arr1, arr2) {
             /* ... unchanged ... */
-            if (!arr1 || !arr2 || arr1.length !== arr2.length) return false;
-            for (let i = 0; i < arr1.length; i++) {
-                if (arr1[i] !== arr2[i]) return false;
-            }
-            return true;
+            if (!arr1 || !arr2 || arr1.length !== arr2.length) return !1;
+            for (let i = 0; i < arr1.length; i++)
+                if (arr1[i] !== arr2[i]) return !1;
+            return !0
         }
 
         // --- *** Refactor: MidiManager Module (A5) *** ---
@@ -638,93 +332,89 @@
             let _globalOutputChannel = '1';
             let _callbacks = {
                 onReady: () => {},
-                onInputSelected: (input) => {},
-                onOutputSelected: (output) => {},
-                onStatusUpdate: (status) => {}
+                onInputSelected: (i) => {},
+                onOutputSelected: (o) => {},
+                onStatusUpdate: (s) => {}
             };
 
-            function _updateStatus(newStatus) {
-                _status = newStatus;
+            function _updateStatus(s) {
+                _status = s;
                 _callbacks.onStatusUpdate(_status);
             }
 
-            function _onMIDISuccess(midi) {
-                _midiAccess = midi;
+            function _onMIDISuccess(m) {
+                _midiAccess = m;
                 _updateStatus("Connected");
                 _inputsList = [];
-                _midiAccess.inputs.forEach(input => {
+                _midiAccess.inputs.forEach(i => {
                     _inputsList.push({
-                        id: input.id,
-                        name: input.name || `MIDI Input ${_inputsList.length + 1}`
+                        id: i.id,
+                        name: i.name || `In ${_inputsList.length+1}`
                     });
                 });
                 _outputsList = [];
-                _midiAccess.outputs.forEach(output => {
+                _midiAccess.outputs.forEach(o => {
                     _outputsList.push({
-                        id: output.id,
-                        name: output.name || `MIDI Output ${_outputsList.length + 1}`
+                        id: o.id,
+                        name: o.name || `Out ${_outputsList.length+1}`
                     });
                 });
                 _callbacks.onReady(_inputsList, _outputsList);
             }
 
-            function _onMIDIFailure(error) {
-                _updateStatus("MIDI access failed: " + error);
+            function _onMIDIFailure(e) {
+                _updateStatus("MIDI failed: " + e);
                 _callbacks.onReady([], []);
             }
             return {
-                initialize: (callbacks) => {
+                initialize: (c) => {
                     _callbacks = {
                         ..._callbacks,
-                        ...callbacks
+                        ...c
                     };
-                    _updateStatus("Requesting MIDI access...");
-                    if (navigator.requestMIDIAccess) {
-                        navigator.requestMIDIAccess().then(_onMIDISuccess, _onMIDIFailure);
-                    } else {
-                        _updateStatus("Web MIDI API not supported.");
+                    _updateStatus("Requesting...");
+                    if (navigator.requestMIDIAccess) navigator.requestMIDIAccess().then(_onMIDISuccess, _onMIDIFailure);
+                    else {
+                        _updateStatus("Web MIDI not supported.");
                         _callbacks.onReady([], []);
                     }
                 },
-                selectInput: (inputId) => {
+                selectInput: (id) => {
                     if (_selectedInput) {
                         _selectedInput.onmidimessage = null;
                         _selectedInput = null;
                     }
-                    if (inputId && _midiAccess) {
-                        _selectedInput = _midiAccess.inputs.get(inputId);
-                        if (_selectedInput) {
-                            _callbacks.onInputSelected(_selectedInput);
-                        } else {
-                            console.warn(`Input ${inputId} not found.`);
+                    if (id && _midiAccess) {
+                        _selectedInput = _midiAccess.inputs.get(id);
+                        if (_selectedInput) _callbacks.onInputSelected(_selectedInput);
+                        else {
+                            console.warn(`Input ${id} not found.`);
                             _callbacks.onInputSelected(null);
                         }
-                    } else {
-                        _callbacks.onInputSelected(null);
-                    }
+                    } else _callbacks.onInputSelected(null);
                 },
-                selectOutput: (outputId) => {
+                selectOutput: (id) => {
                     _selectedOutput = null;
-                    if (outputId && _midiAccess) {
-                        _selectedOutput = _midiAccess.outputs.get(outputId);
-                        if (!_selectedOutput) console.warn(`Output ${outputId} not found.`);
+                    if (id && _midiAccess) {
+                        _selectedOutput = _midiAccess.outputs.get(id);
+                        if (!_selectedOutput) console.warn(`Output ${id} not found.`);
                     }
                     _callbacks.onOutputSelected(_selectedOutput);
                 },
-                setMPEEnabled: (enabled) => {
-                    _isMPEEnabled = !!enabled;
+                setMPEEnabled: (e) => {
+                    _isMPEEnabled = !!e;
                 },
-                setMPEGlobalInputChannel: (channel) => {
-                    _globalInputChannel = channel;
+                setMPEGlobalInputChannel: (c) => {
+                    _globalInputChannel = c;
                 },
-                setMPEInputVoiceChannels: (count) => {
-                    _inputVoiceChannels = parseInt(count) || 8;
+                setMPEInputVoiceChannels: (c) => {
+                    _inputVoiceChannels = parseInt(c) || 8;
                 },
-                setMPEOutputMode: (mode) => {
-                    _outputMode = mode;
+                setMPEOutputMode: (m) => {
+                    _outputMode = m;
                 },
-                setMPEGlobalOutputChannel: (channel) => {
-                    _globalOutputChannel = channel;
+                setMPEGlobalOutputChannel: (c) => {
+                    _globalOutputChannel = c;
                 },
                 isMPEEnabled: () => _isMPEEnabled,
                 getOutputChannel: () => parseInt(_globalOutputChannel) - 1,
@@ -744,88 +434,88 @@
             let activeArpNotes = new Map();
             let config = {
                 midiOutput: null,
-                updatePlaybackKeyCallback: (note) => {},
+                updatePlaybackKeyCallback: (n) => {},
                 getMPEOutputMode: () => false
             };
 
-            function sendNoteOnHelper(note, velocity, outputChannel) {
-                if (config.midiOutput && note >= 0 && note <= 127 && velocity > 0 && velocity <= 127 && outputChannel >= 0 && outputChannel <= 15) {
-                    const isMPE = config.getMPEOutputMode();
-                    config.midiOutput.send([0x90 + outputChannel, note, velocity]);
+            function sendNoteOnHelper(n, v, c) {
+                if (config.midiOutput && n >= 0 && n <= 127 && v > 0 && v <= 127 && c >= 0 && c <= 15) {
+                    const m = config.getMPEOutputMode();
+                    config.midiOutput.send([0x90 + c, n, v]);
                 }
             }
 
-            function sendNoteOffHelper(note, outputChannel, velocity = 0) {
-                if (config.midiOutput && note >= 0 && note <= 127 && outputChannel >= 0 && outputChannel <= 15) {
-                    const isMPE = config.getMPEOutputMode();
-                    config.midiOutput.send([0x80 + outputChannel, note, velocity]);
+            function sendNoteOffHelper(n, c, v = 0) {
+                if (config.midiOutput && n >= 0 && n <= 127 && c >= 0 && c <= 15) {
+                    const m = config.getMPEOutputMode();
+                    config.midiOutput.send([0x80 + c, n, v]);
                 }
             }
 
-            function cancelNoteOff(note) {
-                const state = activeArpNotes.get(note);
-                if (state && state.noteOffTimeoutId !== null) {
-                    clearTimeout(state.noteOffTimeoutId);
-                    activeArpNotes.set(note, {
-                        ...state,
+            function cancelNoteOff(n) {
+                const s = activeArpNotes.get(n);
+                if (s && s.noteOffTimeoutId !== null) {
+                    clearTimeout(s.noteOffTimeoutId);
+                    activeArpNotes.set(n, {
+                        ...s,
                         noteOffTimeoutId: null
                     });
-                    config.updatePlaybackKeyCallback(note);
+                    config.updatePlaybackKeyCallback(n);
                 }
             }
 
-            function stopNote(note, outputChannel) {
-                cancelNoteOff(note);
-                if (activeArpNotes.has(note)) {
-                    sendNoteOffHelper(note, outputChannel);
-                    activeArpNotes.delete(note);
-                    config.updatePlaybackKeyCallback(note);
+            function stopNote(n, c) {
+                cancelNoteOff(n);
+                if (activeArpNotes.has(n)) {
+                    sendNoteOffHelper(n, c);
+                    activeArpNotes.delete(n);
+                    config.updatePlaybackKeyCallback(n);
                 }
             }
 
-            function scheduleNoteOff(note, delayMs, outputChannel) {
-                cancelNoteOff(note);
-                const timeoutId = setTimeout(() => stopNote(note, outputChannel), Math.max(0, delayMs));
-                const state = activeArpNotes.get(note);
-                if (state) {
-                    activeArpNotes.set(note, {
-                        ...state,
-                        noteOffTimeoutId: timeoutId,
+            function scheduleNoteOff(n, d, c) {
+                cancelNoteOff(n);
+                const t = setTimeout(() => stopNote(n, c), Math.max(0, d));
+                const s = activeArpNotes.get(n);
+                if (s) {
+                    activeArpNotes.set(n, {
+                        ...s,
+                        noteOffTimeoutId: t,
                         isExtended: false
                     });
-                    config.updatePlaybackKeyCallback(note);
+                    config.updatePlaybackKeyCallback(n);
                 }
             }
 
-            function startNote(note, velocity, outputChannel) {
-                if (activeArpNotes.has(note)) cancelNoteOff(note);
-                sendNoteOnHelper(note, velocity, outputChannel);
-                activeArpNotes.set(note, {
+            function startNote(n, v, c) {
+                if (activeArpNotes.has(n)) cancelNoteOff(n);
+                sendNoteOnHelper(n, v, c);
+                activeArpNotes.set(n, {
                     noteOffTimeoutId: null,
                     isExtended: false,
                     chordsHeldCount: 0,
                     timeHeldDivisions: 0,
-                    outputChannel: outputChannel
+                    outputChannel: c
                 });
-                config.updatePlaybackKeyCallback(note);
+                config.updatePlaybackKeyCallback(n);
             }
 
             function allNotesOff() {
-                const notesToStop = Array.from(activeArpNotes.entries());
-                notesToStop.forEach(([note, state]) => stopNote(note, state.outputChannel));
+                const nS = Array.from(activeArpNotes.entries());
+                nS.forEach(([n, s]) => stopNote(n, s.outputChannel));
                 if (activeArpNotes.size > 0) {
-                    console.warn("ANM: Map not empty after allNotesOff");
+                    console.warn("ANM: Map !empty");
                     activeArpNotes.clear();
                 }
             }
             return {
-                initialize: (initialConfig) => {
-                    config.updatePlaybackKeyCallback = initialConfig.updatePlaybackKeyCallback || ((note) => {});
-                    config.getMPEOutputMode = initialConfig.getMPEOutputMode || (() => false);
+                initialize: (cfg) => {
+                    config.updatePlaybackKeyCallback = cfg.updatePlaybackKeyCallback || ((n) => {});
+                    config.getMPEOutputMode = cfg.getMPEOutputMode || (() => false);
                 },
-                setMidiOutput: (outputDevice) => {
+                setMidiOutput: (o) => {
                     allNotesOff();
-                    config.midiOutput = outputDevice;
+                    config.midiOutput = o;
                 },
                 getActiveNotesMap: () => activeArpNotes,
                 startNote,
@@ -833,191 +523,468 @@
                 scheduleNoteOff,
                 cancelNoteOff,
                 allNotesOff,
-                hasNote: (note) => activeArpNotes.has(note),
-                updateNoteState: (note, newStatePartial) => {
-                    const state = activeArpNotes.get(note);
-                    if (state) {
-                        activeArpNotes.set(note, {
-                            ...state,
-                            ...newStatePartial
+                hasNote: (n) => activeArpNotes.has(n),
+                updateNoteState: (n, pS) => {
+                    const s = activeArpNotes.get(n);
+                    if (s) {
+                        activeArpNotes.set(n, {
+                            ...s,
+                            ...pS
                         });
-                        config.updatePlaybackKeyCallback(note);
+                        config.updatePlaybackKeyCallback(n);
                     }
                 }
             };
         })();
 
-
         // --- *** Refactor: NoteInputManager Module (A2) *** ---
         const NoteInputManager = (function() {
-            // --- State ---
+            /* ... unchanged from previous step ... */
             let _rawHeldNotes = [];
-            let _heldNotes = []; // Octave expanded
+            let _heldNotes = [];
             let _heldNotesUI = new Set();
             let _heldNotesMIDI = new Set();
             let _playedNoteOrder = [];
             let _octaveExpandedNoteMap = new Map();
-            let _notePressures = new Map(); // Maps originalNote -> pressure
-            let _noteMPEYAxis = new Map(); // Maps originalNote -> y-axis value
-            let _mpeChannelNotes = new Array(16).fill(null); // Maps channel -> current raw note
-
+            let _notePressures = new Map();
+            let _noteMPEYAxis = new Map();
+            let _mpeChannelNotes = new Array(16).fill(null);
             let _octaveCount = 1;
             let _isSustainPedalPressed = false;
             let _sustainedNotesMIDI = new Set();
-
-            // --- Config / Callbacks ---
             let config = {
-                onNotesChanged: (heldNotes, rawHeldNotes, playedOrder) => {}, // Callback when notes list changes
+                onNotesChanged: (h, rH, pO) => {},
                 getMPEInputConfig: () => ({
                     isEnabled: false
-                }), // Function to get MPE config
-                updatePianoKeyCallback: (note, source) => {}, // Callback to update UI
-                updatePlaybackKeyboardCallback: () => {} // Callback to update playback UI
+                }),
+                updatePianoKeyCallback: (n, s) => {},
+                updatePlaybackKeyboardCallback: () => {}
             };
-            const defaultNotePressure = 0;
-            const defaultMpeYAxis = 0;
+            const defP = 0;
+            const defY = 0;
 
-
-            // --- Internal Methods ---
-
-            /** Generates octave-expanded notes from raw held notes. */
-            function _generateOctaveExpandedNotes(inputNotes, octaves) {
-                const expandedNotes = [];
-                const seenNotes = new Set();
+            function _genOctExp(inp, oct) {
+                const exp = [];
+                const seen = new Set();
                 _octaveExpandedNoteMap.clear();
-                for (let i = 0; i < octaves; i++) {
-                    for (const originalNote of inputNotes) {
-                        const expandedNote = originalNote + (12 * i);
-                        if (!seenNotes.has(expandedNote) && expandedNote <= 127) {
-                            expandedNotes.push(expandedNote);
-                            seenNotes.add(expandedNote);
-                            _octaveExpandedNoteMap.set(expandedNote, originalNote);
+                for (let i = 0; i < oct; i++) {
+                    for (const o of inp) {
+                        const eN = o + (12 * i);
+                        if (!seen.has(eN) && eN <= 127) {
+                            exp.push(eN);
+                            seen.add(eN);
+                            _octaveExpandedNoteMap.set(eN, o);
                         }
                     }
                 }
-                return expandedNotes;
+                return exp;
             }
 
-            /** Finds the original raw note corresponding to an octave-expanded note. */
-            function _findOriginalNote(expandedNote) {
-                if (_rawHeldNotes.includes(expandedNote)) {
-                    return expandedNote; // It wasn't expanded or was the base note
-                }
-                return _octaveExpandedNoteMap.get(expandedNote) || null;
+            function _findOrig(expN) {
+                if (_rawHeldNotes.includes(expN)) return expN;
+                return _octaveExpandedNoteMap.get(expN) || null;
             }
 
-            /** Updates the _heldNotes array and notifies listeners. */
-            function _updateHeldNotesArraysAndNotify() {
-                // Sort raw notes before expansion for consistent octave mapping
+            function _updateAndNotify() {
                 _rawHeldNotes.sort((a, b) => a - b);
-                _heldNotes = _generateOctaveExpandedNotes(_rawHeldNotes, _octaveCount);
-
-                // Notify listeners
+                _heldNotes = _genOctExp(_rawHeldNotes, _octaveCount);
                 config.onNotesChanged([..._heldNotes], [..._rawHeldNotes], getPlayedNoteOrderFiltered());
             }
 
-
-            /** Internal logic to add a note. */
-            function _addHeldNote(note, source = 'ui', channel = null) {
-                const isUI = source === 'ui';
-                const heldSet = isUI ? _heldNotesUI : _heldNotesMIDI;
-                let noteAdded = false;
-                const mpeConfig = config.getMPEInputConfig();
-
+            function _add(n, src = 'ui', ch = null) {
+                const isUI = src === 'ui';
+                const hS = isUI ? _heldNotesUI : _heldNotesMIDI;
+                let added = false;
+                const mCfg = config.getMPEInputConfig();
                 if (isUI) {
-                    if (!heldSet.has(note)) {
-                        heldSet.add(note);
-                        _rawHeldNotes.push(note);
-                        _playedNoteOrder.push(note);
-                        noteAdded = true;
-                    } else { // UI click again toggles off
-                        heldSet.delete(note);
-                        const indexToRemove = _rawHeldNotes.indexOf(note);
-                        if (indexToRemove > -1) {
-                            _rawHeldNotes.splice(indexToRemove, 1);
-                            const playedIndexToRemove = _playedNoteOrder.indexOf(note);
-                            if (playedIndexToRemove > -1) {
-                                _playedNoteOrder.splice(playedIndexToRemove, 1);
-                            }
+                    if (!hS.has(n)) {
+                        hS.add(n);
+                        _rawHeldNotes.push(n);
+                        _playedNoteOrder.push(n);
+                        added = true;
+                    } else {
+                        hS.delete(n);
+                        const i = _rawHeldNotes.indexOf(n);
+                        if (i > -1) {
+                            _rawHeldNotes.splice(i, 1);
+                            const pI = _playedNoteOrder.indexOf(n);
+                            if (pI > -1) _playedNoteOrder.splice(pI, 1);
                         }
-                        // No noteAdded = true here, it's a removal
                     }
-                    // Update arrays and UI immediately for UI toggle
-                    _updateHeldNotesArraysAndNotify();
-                    config.updatePianoKeyCallback(note, source);
-                    config.updatePlaybackKeyboardCallback(); // Update whole playback display
-
-                } else { // source === 'midi'
-                    if (!_heldNotesMIDI.has(note)) {
-                        _heldNotesMIDI.add(note);
-                        _rawHeldNotes.push(note);
-                        _playedNoteOrder.push(note);
-                        noteAdded = true;
-                    }
-                    if (noteAdded) {
-                        // Only update arrays if a note was actually added
-                        _updateHeldNotesArraysAndNotify();
-                    }
-                    // Update UI visuals
-                    config.updatePianoKeyCallback(note, 'midi');
+                    _updateAndNotify();
+                    config.updatePianoKeyCallback(n, src);
                     config.updatePlaybackKeyboardCallback();
-
-                    if (mpeConfig.isEnabled && channel !== null && channel >= 0 && channel < 16) {
-                        _mpeChannelNotes[channel] = note;
+                } else {
+                    if (!_heldNotesMIDI.has(n)) {
+                        _heldNotesMIDI.add(n);
+                        _rawHeldNotes.push(n);
+                        _playedNoteOrder.push(n);
+                        added = true;
                     }
+                    if (added) _updateAndNotify();
+                    config.updatePianoKeyCallback(n, 'midi');
+                    config.updatePlaybackKeyboardCallback();
+                    if (mCfg.isEnabled && ch !== null && ch >= 0 && ch < 16) _mpeChannelNotes[ch] = n;
                 }
-
-                if (noteAdded) {
-                    _notePressures.set(note, defaultNotePressure);
-                    _noteMPEYAxis.set(note, defaultMpeYAxis);
+                if (added) {
+                    _notePressures.set(n, defP);
+                    _noteMPEYAxis.set(n, defY);
                 }
             }
 
-            /** Internal logic to remove a note. */
-            function _removeHeldNote(note, source = 'midi', channel = null) {
-                let noteRemoved = false;
-                const mpeConfig = config.getMPEInputConfig();
-
-                if (source === 'midi') {
+            function _remove(n, src = 'midi', ch = null) {
+                let removed = false;
+                const mCfg = config.getMPEInputConfig();
+                if (src === 'midi') {
                     if (_isSustainPedalPressed) {
-                        _sustainedNotesMIDI.add(note); // Sustain it
-                        return; // Don't process removal yet
+                        _sustainedNotesMIDI.add(n);
+                        return;
                     }
-                    if (_heldNotesMIDI.has(note)) {
-                        _heldNotesMIDI.delete(note);
-                        const indexToRemove = _rawHeldNotes.indexOf(note);
-                        if (indexToRemove > -1) {
-                            _rawHeldNotes.splice(indexToRemove, 1);
-                            const playedIndexToRemove = _playedNoteOrder.indexOf(note);
-                            if (playedIndexToRemove > -1) {
-                                _playedNoteOrder.splice(playedIndexToRemove, 1);
-                            }
-                            noteRemoved = true;
+                    if (_heldNotesMIDI.has(n)) {
+                        _heldNotesMIDI.delete(n);
+                        const i = _rawHeldNotes.indexOf(n);
+                        if (i > -1) {
+                            _rawHeldNotes.splice(i, 1);
+                            const pI = _playedNoteOrder.indexOf(n);
+                            if (pI > -1) _playedNoteOrder.splice(pI, 1);
+                            removed = true;
                         }
-                        // Update UI visual state for this key
-                        config.updatePianoKeyCallback(note, null); // Indicate removal for MIDI source
-
-                        if (mpeConfig.isEnabled && channel !== null && channel >= 0 && channel < 16 && _mpeChannelNotes[channel] === note) {
-                            _mpeChannelNotes[channel] = null;
-                        }
+                        config.updatePianoKeyCallback(n, null);
+                        if (mCfg.isEnabled && ch !== null && ch >= 0 && ch < 16 && _mpeChannelNotes[ch] === n) _mpeChannelNotes[ch] = null;
                     }
-                } else { // source === 'ui' - Removal handled by _addHeldNote toggle logic
-                    // This path shouldn't normally be hit by external calls if UI uses toggle
-                    console.warn("NoteInputManager: _removeHeldNote called for UI source unexpectedly.");
-                    return; // Avoid double removal/notification
+                } else {
+                    console.warn("NIM: _remove UI");
+                    return;
                 }
-
-                if (noteRemoved) {
-                    _notePressures.delete(note);
-                    _noteMPEYAxis.delete(note);
-                    _updateHeldNotesArraysAndNotify(); // Update arrays and notify about change
-                    config.updatePlaybackKeyboardCallback(); // Update whole playback display
+                if (removed) {
+                    _notePressures.delete(n);
+                    _noteMPEYAxis.delete(n);
+                    _updateAndNotify();
+                    config.updatePlaybackKeyboardCallback();
                 }
             }
 
-            /** Filters playedNoteOrder to only include currently held raw notes. */
             function getPlayedNoteOrderFiltered() {
-                return _playedNoteOrder.filter(note => _rawHeldNotes.includes(note));
+                return _playedNoteOrder.filter(n => _rawHeldNotes.includes(n));
+            }
+            return {
+                initialize: (cfg) => {
+                    config = {
+                        ...config,
+                        ...cfg
+                    };
+                },
+                handleNoteOn: (n, s = 'ui', c = null) => {
+                    _add(n, s, c);
+                },
+                handleNoteOff: (n, s = 'midi', c = null) => {
+                    _remove(n, s, c);
+                },
+                handleSustain: (isP) => {
+                    const was = _isSustainPedalPressed;
+                    _isSustainPedalPressed = isP;
+                    if (was && !isP) {
+                        let rel = [..._sustainedNotesMIDI];
+                        _sustainedNotesMIDI.clear();
+                        rel.forEach(sN => {
+                            if (!_heldNotesMIDI.has(sN)) {
+                                let ch = -1;
+                                if (config.getMPEInputConfig().isEnabled) ch = _mpeChannelNotes.findIndex(n => n === sN);
+                                _remove(sN, 'midi', ch !== -1 ? ch : null);
+                            }
+                        });
+                    }
+                },
+                handlePressureUpdate: (n, p, isP = false) => {
+                    const o = isP ? _findOrig(n) : n;
+                    if (o !== null && _notePressures.has(o)) _notePressures.set(o, p);
+                },
+                handleMPEYAxisUpdate: (n, v) => {
+                    const o = _findOrig(n);
+                    if (o !== null) _noteMPEYAxis.set(o, v);
+                },
+                setOctaveCount: (c) => {
+                    const nC = Math.max(1, Math.min(4, parseInt(c) || 1));
+                    if (nC !== _octaveCount) {
+                        _octaveCount = nC;
+                        _updateAndNotify();
+                        config.updatePlaybackKeyboardCallback();
+                    }
+                },
+                getHeldNotes: () => [..._heldNotes],
+                getRawHeldNotes: () => [..._rawHeldNotes],
+                getPlayedNoteOrderFiltered,
+                getNotePressure: (o) => _notePressures.get(o) ?? defP,
+                getNoteMPEYAxis: (o) => _noteMPEYAxis.get(o) ?? defY,
+                findOriginalNote: _findOrig,
+                getMPEChannelNote: (c) => _mpeChannelNotes[c] ?? null,
+                hasHeldNotes: () => _rawHeldNotes.length > 0,
+                hasHeldUINote: (n) => _heldNotesUI.has(n),
+                hasHeldMIDINote: (n) => _heldNotesMIDI.has(n),
+            };
+        })();
+
+        // --- *** Refactor: ClockManager Module (A4) *** ---
+        const ClockManager = (function() {
+            /* ... unchanged from previous step ... */
+            let _tempoSource = 'internal';
+            let _bpm = 120;
+            let _clockDivision = '1/4';
+            let _clkDivMax = 24;
+            let _tickCounter = -1;
+            let _intClock = null;
+            let _clkDivDurMs = (1000 / (120 / 60 * 24)) * 24;
+            const _histSz = 24;
+            let _tickHist = new Array(_histSz).fill(performance.now());
+            let _tickIdx = _histSz;
+            let config = {
+                onArpStep: () => {},
+                onTempoUpdate: (b, s) => {}
+            };
+
+            function _calcClkDivMax(d) {
+                switch (d) {
+                    case '1/1':
+                        return 96;
+                    case '1/2':
+                        return 48;
+                    case '1/4':
+                        return 24;
+                    case '1/8':
+                        return 12;
+                    case '1/16':
+                        return 6;
+                    case '1/32':
+                        return 3;
+                    case '1/2T':
+                        return 32;
+                    case '1/4T':
+                        return 16;
+                    case '1/8T':
+                        return 8;
+                    case '1/16T':
+                        return 4;
+                    case '1/32T':
+                        return 2;
+                    default:
+                        return 24;
+                }
+            }
+
+            function _tickProc() {
+                _tickCounter++;
+                if (_tickCounter >= 0 && (_tickCounter % _clkDivMax === 0)) config.onArpStep();
+            }
+
+            function _handleIntTick() {
+                _tickProc();
+            }
+
+            function _updateDur() {
+                if (_tempoSource === 'internal' && _bpm > 0) {
+                    const tps = (_bpm / 60) * 24;
+                    const iMs = 1000 / tps;
+                    _clkDivDurMs = iMs * _clkDivMax;
+                }
+            }
+
+            function _setupIntClock() {
+                clearInterval(_intClock);
+                if (_bpm <= 0) _bpm = 1;
+                _updateDur();
+                const tps = (_bpm / 60) * 24;
+                const iMs = 1000 / tps;
+                _intClock = setInterval(_handleIntTick, iMs);
+                _tickCounter = -1;
+            }
+
+            function _estExtBPM() {
+                const now = performance.now();
+                for (let i = 0; i < _histSz - 1; i++) _tickHist[i] = _tickHist[i + 1];
+                _tickHist[_histSz - 1] = now;
+                _tickIdx++;
+                let avgI = 0;
+                let latestI = 0;
+                if (_tickIdx > 1) latestI = _tickHist[_histSz - 1] - _tickHist[_histSz - 2];
+                if (_tickIdx >= _histSz) {
+                    const fT = _tickHist[0];
+                    const lT = _tickHist[_histSz - 1];
+                    const tD = lT - fT;
+                    avgI = tD / (_histSz - 1);
+                    if (avgI > 0) {
+                        _bpm = Math.round(60000 / (avgI * 24));
+                        _clkDivDurMs = (latestI > 0 ? latestI : avgI) * _clkDivMax;
+                        config.onTempoUpdate(_bpm, _tempoSource);
+                    }
+                } else if (_tickIdx > 1 && latestI > 0) {
+                    _bpm = Math.round(60000 / (latestI * 24));
+                    _clkDivDurMs = latestI * _clkDivMax;
+                    config.onTempoUpdate(_bpm, _tempoSource);
+                }
+            }
+            return {
+                initialize: (cfg) => {
+                    config = {
+                        ...config,
+                        ...cfg
+                    };
+                    _tempoSource = cfg.initialTempoSource || 'internal';
+                    _bpm = cfg.initialBPM || 120;
+                    _clockDivision = cfg.initialClockDivision || '1/4';
+                    _clkDivMax = _calcClkDivMax(_clockDivision);
+                    _updateDur();
+                    config.onTempoUpdate(_bpm, _tempoSource);
+                },
+                setTempoSource: (s) => {
+                    if (s !== _tempoSource) {
+                        _tempoSource = s;
+                        if (_tempoSource === 'internal') _setupIntClock();
+                        else {
+                            clearInterval(_intClock);
+                            _intClock = null;
+                            _tickCounter = -1;
+                            _tickHist = new Array(_histSz).fill(performance.now());
+                            _tickIdx = _histSz;
+                            _updateDur();
+                        }
+                        config.onTempoUpdate(_bpm, _tempoSource);
+                    }
+                },
+                setBPM: (b) => {
+                    const bV = parseInt(b) || 120;
+                    if (bV !== _bpm) {
+                        _bpm = bV;
+                        if (_tempoSource === 'internal') _setupIntClock();
+                        config.onTempoUpdate(_bpm, _tempoSource);
+                    }
+                },
+                setClockDivision: (d) => {
+                    if (d !== _clockDivision) {
+                        _clockDivision = d;
+                        _clkDivMax = _calcClkDivMax(d);
+                        if (_tempoSource === 'internal') _setupIntClock();
+                        else {
+                            let lI = 0;
+                            if (_tickIdx > 1) lI = _tickHist[_histSz - 1] - _tickHist[_histSz - 2];
+                            if (lI > 0) _clkDivDurMs = lI * _clkDivMax;
+                            else _updateDur();
+                        }
+                    }
+                },
+                start: () => {
+                    _tickCounter = -1;
+                    if (_tempoSource === 'internal' && !_intClock) _setupIntClock();
+                },
+                stop: () => {
+                    if (_intClock) {
+                        clearInterval(_intClock);
+                        _intClock = null;
+                    }
+                    _tickCounter = -1;
+                },
+                externalTick: () => {
+                    if (_tempoSource === 'external') {
+                        _estExtBPM();
+                        _tickProc();
+                    }
+                },
+                getBPM: () => _bpm,
+                getClockDivisionDurationMs: () => _clkDivDurMs
+            };
+        })();
+
+        // --- *** Refactor: RhythmManager Module (A3) *** ---
+        const RhythmManager = (function() {
+            // --- Rhythm Event Constants --- (Copied locally)
+            const RHYTHM_BEAT = 'B';
+            const RHYTHM_REST = 'R';
+            const PATTERN_NOTE = 'N';
+            const PATTERN_SKIP = 'S';
+
+            // --- State ---
+            let _patternSteps = 5;
+            let _patternBeats = 3;
+            let _patternOffset = 0;
+            let _isPatternDisabled = false;
+            let _rhythmSteps = 7;
+            let _rhythmBeats = 5;
+            let _rhythmOffset = 0;
+            let _isRhythmDisabled = false;
+            let _isGateFlexEnabled = false;
+
+            let _patternRhythm = [];
+            let _rhythm = [];
+            let _rhythmGateMultipliers = [];
+
+            // --- Config / Callbacks ---
+            let config = {
+                onPatternDisplayUpdate: (rhythmArray, isDisabled) => {},
+                onRhythmDisplayUpdate: (rhythmArray, isDisabled) => {},
+                onPatternControlsUpdate: (isDisabled) => {},
+                onRhythmControlsUpdate: (isDisabled) => {}
+            };
+
+            // --- Internal Methods ---
+
+            /** Generates Euclidean rhythm pattern. */
+            function _generateEuclideanRhythm(steps, beats, offset, beatEvent, restEvent, isDisabled = false) {
+                if (isDisabled || steps <= 0) {
+                    return new Array(steps > 0 ? steps : 0).fill(beatEvent);
+                }
+                beats = Math.min(beats, steps);
+                const rhythmArr = new Array(steps).fill(restEvent);
+                let beatIndex = 0;
+                for (let i = 0; i < steps; i++) {
+                    if (Math.floor((beatIndex * steps) / beats) === i) {
+                        rhythmArr[i] = beatEvent;
+                        beatIndex++;
+                    }
+                }
+                const actualOffset = offset % steps;
+                const positiveOffset = actualOffset >= 0 ? actualOffset : steps + actualOffset;
+                if (positiveOffset > 0) {
+                    return [...rhythmArr.slice(steps - positiveOffset), ...rhythmArr.slice(0, steps - positiveOffset)];
+                }
+                return rhythmArr;
+            }
+
+            /** Generates gate multipliers based on the rhythm array. */
+            function _generateRhythmGateMultipliers(rhythmArray) {
+                const len = rhythmArray.length;
+                if (len === 0) return [];
+                const multipliers = new Array(len).fill(0);
+                for (let i = 0; i < len; i++) {
+                    if (rhythmArray[i] === RHYTHM_BEAT) {
+                        let stepsToNextBeat = 1;
+                        let nextIndex = (i + 1) % len;
+                        while (nextIndex !== i && rhythmArray[nextIndex] !== RHYTHM_BEAT) {
+                            stepsToNextBeat++;
+                            nextIndex = (nextIndex + 1) % len;
+                        }
+                        if (nextIndex === i && stepsToNextBeat === len && rhythmArray.filter(s => s === RHYTHM_BEAT).length === 1) {
+                            multipliers[i] = len; // Full length if only one beat
+                        } else if (nextIndex !== i) {
+                            multipliers[i] = stepsToNextBeat;
+                        } else {
+                            multipliers[i] = 1; // Fallback for single beat weirdness
+                        }
+                    }
+                }
+                return multipliers;
+            }
+
+            /** Recalculates rhythms and notifies UI callbacks. */
+            function _updateRhythmsAndNotify() {
+                // Generate Pattern
+                _patternRhythm = _generateEuclideanRhythm(_patternSteps, _patternBeats, _patternOffset, PATTERN_NOTE, PATTERN_SKIP, _isPatternDisabled);
+                config.onPatternDisplayUpdate([..._patternRhythm], _isPatternDisabled); // Pass copy
+                config.onPatternControlsUpdate(_isPatternDisabled);
+
+                // Generate Rhythm
+                _rhythm = _generateEuclideanRhythm(_rhythmSteps, _rhythmBeats, _rhythmOffset, RHYTHM_BEAT, RHYTHM_REST, _isRhythmDisabled);
+                _rhythmGateMultipliers = _generateRhythmGateMultipliers(_rhythm);
+                config.onRhythmDisplayUpdate([..._rhythm], _isRhythmDisabled); // Pass copy
+                config.onRhythmControlsUpdate(_isRhythmDisabled);
             }
 
             // --- Public Interface ---
@@ -1027,122 +994,98 @@
                         ...config,
                         ...initialConfig
                     };
-                    // console.log("NoteInputManager Initialized");
+                    // Set initial values from config or defaults
+                    _patternSteps = initialConfig.initialPatternSteps || 5;
+                    _patternBeats = initialConfig.initialPatternBeats || 3;
+                    _patternOffset = initialConfig.initialPatternOffset || 0;
+                    _isPatternDisabled = initialConfig.initialIsPatternDisabled || false;
+                    _rhythmSteps = initialConfig.initialRhythmSteps || 7;
+                    _rhythmBeats = initialConfig.initialRhythmBeats || 5;
+                    _rhythmOffset = initialConfig.initialRhythmOffset || 0;
+                    _isRhythmDisabled = initialConfig.initialIsRhythmDisabled || false;
+                    _isGateFlexEnabled = initialConfig.initialIsGateFlexEnabled || false;
+
+                    _updateRhythmsAndNotify(); // Generate initial rhythms and update UI
+                    // console.log("RhythmManager Initialized");
                 },
 
-                handleNoteOn: (note, source = 'ui', channel = null) => {
-                    // console.log(`NIM: NoteOn ${note} src=${source} ch=${channel}`);
-                    _addHeldNote(note, source, channel);
+                // --- Setters ---
+                setPatternSteps: (v) => {
+                    _patternSteps = parseInt(v) || 1;
+                    _updateRhythmsAndNotify();
                 },
-
-                handleNoteOff: (note, source = 'midi', channel = null) => {
-                    // console.log(`NIM: NoteOff ${note} src=${source} ch=${channel}`);
-                    _removeHeldNote(note, source, channel);
+                setPatternBeats: (v) => {
+                    _patternBeats = parseInt(v) || 1;
+                    _updateRhythmsAndNotify();
                 },
-
-                handleSustain: (isPressed) => {
-                    // console.log(`NIM: Sustain ${isPressed}`);
-                    const wasPressed = _isSustainPedalPressed;
-                    _isSustainPedalPressed = isPressed;
-
-                    if (wasPressed && !isPressed) { // Pedal Up
-                        let notesToRelease = [..._sustainedNotesMIDI];
-                        _sustainedNotesMIDI.clear();
-                        // Trigger note off for any notes that were sustained AND are not currently held by MIDI again
-                        notesToRelease.forEach(sustainedNote => {
-                            if (!_heldNotesMIDI.has(sustainedNote)) {
-                                // Find channel if MPE
-                                let noteChannel = -1;
-                                if (config.getMPEInputConfig().isEnabled) {
-                                    noteChannel = _mpeChannelNotes.findIndex(n => n === sustainedNote);
-                                }
-                                _removeHeldNote(sustainedNote, 'midi', noteChannel !== -1 ? noteChannel : null);
-                            }
-                        });
-                    }
+                setPatternOffset: (v) => {
+                    _patternOffset = parseInt(v) || 0;
+                    _updateRhythmsAndNotify();
                 },
-
-                handlePressureUpdate: (note, pressure, isPolyAftertouch = false) => {
-                    // Assumes 'note' is the raw MIDI note from the message
-                    const originalNote = isPolyAftertouch ? _findOriginalNote(note) : note; // Channel pressure applies to original note directly
-                    if (originalNote !== null && _notePressures.has(originalNote)) {
-                        // console.log(`NIM: Pressure update ${originalNote}: ${pressure}`);
-                        _notePressures.set(originalNote, pressure);
-                    }
+                setPatternEnabled: (enabled) => {
+                    _isPatternDisabled = !enabled;
+                    _updateRhythmsAndNotify();
                 },
-
-                handleMPEYAxisUpdate: (note, value) => {
-                    // Assumes 'note' is the raw MIDI note associated with the channel sending CC74
-                    const originalNote = _findOriginalNote(note);
-                    if (originalNote !== null) {
-                        // console.log(`NIM: Y-Axis update ${originalNote}: ${value}`);
-                        _noteMPEYAxis.set(originalNote, value);
-                    }
+                setRhythmSteps: (v) => {
+                    _rhythmSteps = parseInt(v) || 1;
+                    _updateRhythmsAndNotify();
                 },
-
-                setOctaveCount: (count) => {
-                    const newCount = Math.max(1, Math.min(4, parseInt(count) || 1));
-                    if (newCount !== _octaveCount) {
-                        // console.log(`NIM: Octave Count set to ${newCount}`);
-                        _octaveCount = newCount;
-                        _updateHeldNotesArraysAndNotify(); // Regenerate expanded notes and notify
-                        config.updatePlaybackKeyboardCallback(); // Update display
-                    }
+                setRhythmBeats: (v) => {
+                    _rhythmBeats = parseInt(v) || 1;
+                    _updateRhythmsAndNotify();
+                },
+                setRhythmOffset: (v) => {
+                    _rhythmOffset = parseInt(v) || 0;
+                    _updateRhythmsAndNotify();
+                },
+                setRhythmEnabled: (enabled) => {
+                    _isRhythmDisabled = !enabled;
+                    _updateRhythmsAndNotify();
+                },
+                setGateFlexEnabled: (enabled) => {
+                    _isGateFlexEnabled = !!enabled; /* No rhythm recalc needed */
                 },
 
                 // --- Getters ---
-                getHeldNotes: () => [..._heldNotes], // Return a copy
-                getRawHeldNotes: () => [..._rawHeldNotes], // Return a copy
-                getPlayedNoteOrderFiltered: getPlayedNoteOrderFiltered,
-                getNotePressure: (originalNote) => _notePressures.get(originalNote) ?? defaultNotePressure,
-                getNoteMPEYAxis: (originalNote) => _noteMPEYAxis.get(originalNote) ?? defaultMpeYAxis,
-                findOriginalNote: _findOriginalNote,
-                getMPEChannelNote: (channel) => _mpeChannelNotes[channel] ?? null,
-                hasHeldNotes: () => _rawHeldNotes.length > 0,
-                hasHeldUINote: (note) => _heldNotesUI.has(note),
-                hasHeldMIDINote: (note) => _heldNotesMIDI.has(note),
+                getPatternEvent: (index) => {
+                    if (!_patternRhythm || _patternRhythm.length === 0) return PATTERN_NOTE; // Default if invalid
+                    return _patternRhythm[index % _patternRhythm.length];
+                },
+                getRhythmEvent: (index) => {
+                    if (!_rhythm || _rhythm.length === 0) return RHYTHM_BEAT; // Default if invalid
+                    return _rhythm[index % _rhythm.length];
+                },
+                getRhythmGateMultiplier: (index) => {
+                    if (!_rhythmGateMultipliers || _rhythmGateMultipliers.length === 0) return 1;
+                    return _rhythmGateMultipliers[index % _rhythmGateMultipliers.length] || 1;
+                },
+                isGateFlexEnabled: () => _isGateFlexEnabled,
+                isPatternActive: () => !_isPatternDisabled, // Getter for checking if pattern affects logic
+                isRhythmActive: () => !_isRhythmDisabled, // Getter for checking if rhythm affects logic
 
-
+                // Getters for rhythm lengths if needed externally (e.g. for loop limits)
+                getPatternLength: () => _patternRhythm.length,
+                getRhythmLength: () => _rhythm.length,
             };
         })();
-        // --- *** End NoteInputManager Module *** ---
+        // --- *** End RhythmManager Module *** ---
 
 
-        // --- MIDI Variables (Removed globals) ---
-        let currentMidiInputDevice = null; // Keep track for attaching/detaching handler
-        // isSustainPedalPressed moved to NoteInputManager
-        // sustainedNotesMIDI moved to NoteInputManager
+        // --- MIDI Variables ---
+        let currentMidiInputDevice = null;
 
-        // --- Rhythm Event Constants ---
-        const RHYTHM_BEAT = 'B';
-        const RHYTHM_REST = 'R';
-        const PATTERN_NOTE = 'N';
-        const PATTERN_SKIP = 'S';
+        // --- Rhythm Event Constants --- (Removed globals, internal to RhythmManager)
+        // const RHYTHM_BEAT = 'B'; const RHYTHM_REST = 'R'; const PATTERN_NOTE = 'N'; const PATTERN_SKIP = 'S';
 
-        // --- Note Arrays and Sets (Removed globals, managed by NoteInputManager) ---
-        // let rawHeldNotes = [];
-        // let heldNotes = [];
-        // let heldNotesUI = new Set();
-        // let heldNotesMIDI = new Set();
-        // let notePressures = new Map();
-        // let noteMPEYAxis = new Map();
-        // let octaveExpandedNoteMap = new Map();
-        // let playedNoteOrder = [];
-        // let mpeChannelNotes = new Array(16).fill(null);
-
-        // --- Rhythm Pattern Variables ---
-        let patternRhythm = [];
-        let rhythm = [];
-        let rhythmGateMultipliers = [];
-        let isPatternDisabled = false;
-        let isRhythmDisabled = false;
+        // --- Rhythm Pattern Variables (Removed globals, managed by RhythmManager) ---
+        // let patternRhythm = []; let rhythm = []; let rhythmGateMultipliers = [];
+        // let isPatternDisabled = false; let isRhythmDisabled = false;
 
         // --- Arpeggiator State Variables ---
         let arpRunning = false;
-        let arpInterval = null;
         let currentNoteIndex = 0;
         let currentRhythmIndex = 0;
-        let currentPatternIndex = 0;
+        let currentPatternIndex = 0; // Indices remain global for now
         let arpMode = 'up';
         let arpSyncMode = 'key';
         let currentModeNoteList = [];
@@ -1160,23 +1103,8 @@
         let subArpScalePercentage = 0;
         let subArpMode = 'up';
 
-        // --- Gate Flex ---
-        let isGateFlexEnabled = false;
-
-        // --- Tempo and Clock Variables ---
-        let tempoSource = 'internal';
-        let bpm = 120;
-        let clockDivision = '1/4';
-        let tickCounter = -1;
-        let clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
-        let internalClockInterval = null;
-        let clockDivisionDurationMs = 0;
-        const tempoBPMInput = document.getElementById('tempoBPM');
-
-        // --- MIDI Clock Tick History ---
-        const tickHistorySize = 24;
-        let tickHistory = new Array(tickHistorySize).fill(performance.now());
-        let tickIndex = tickHistorySize;
+        // --- Gate Flex (Removed global, managed by RhythmManager) ---
+        // let isGateFlexEnabled = false;
 
         // --- Arpeggio Mode Specific State ---
         let shuffledNotesOrder = [];
@@ -1192,10 +1120,8 @@
         const midiStatusDisplay = document.getElementById('midiStatus');
         const midiInputSelectElem = document.getElementById('midiInputSelect');
         const midiOutputSelectElem = document.getElementById('midiOutputSelect');
+        const tempoBPMDisplay = document.getElementById('tempoBPM');
 
-
-        // --- Octave Expansion (Removed global) ---
-        // let octaveCount = 1;
 
         // --- Velocity Settings ---
         let baseVelocityValue = 96;
@@ -1250,39 +1176,19 @@
         document.getElementById('mpeGlobalOutputChannel').addEventListener('change', function() {
             MidiManager.setMPEGlobalOutputChannel(this.value);
         });
-        // *** Refactor: Octave Listener uses NoteInputManager ***
         document.getElementById('octaves').addEventListener('input', function() {
             NoteInputManager.setOctaveCount(this.value);
-            document.getElementById('octavesValue').textContent = this.value; // Keep UI update here
+            document.getElementById('octavesValue').textContent = this.value;
         });
         document.getElementById('tempoSource').addEventListener('change', function() {
-            /* ... unchanged ... */
-            tempoSource = this.value;
-            if (tempoSource === 'internal') {
-                setupInternalClock();
-                updateTempoDisplay();
-            } else {
-                clearInterval(internalClockInterval);
-                updateTempoDisplay('External MIDI Clock');
-            }
+            ClockManager.setTempoSource(this.value);
         });
-        tempoBPMInput.addEventListener('change', function() {
-            /* ... unchanged ... */
-            bpm = parseInt(this.value);
-            if (tempoSource === 'internal') {
-                setupInternalClock();
-                updateTempoDisplay();
-            }
+        tempoBPMDisplay.addEventListener('change', function() {
+            ClockManager.setBPM(this.value);
         });
         document.getElementById('clockDivision').addEventListener('change', function() {
-            /* ... unchanged ... */
-            clockDivision = this.value;
-            clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
-            if (tempoSource === 'internal') {
-                setupInternalClock();
-            }
+            ClockManager.setClockDivision(this.value);
         });
-        // ChordN, Walk, Velocity, Gate, Sub Arp listeners (unchanged)
         document.getElementById('chordNValue').addEventListener('input', function() {
             chordNValue = parseInt(this.value);
             document.getElementById('chordNValueDisplay').textContent = chordNValue;
@@ -1326,183 +1232,199 @@
         document.getElementById('subArpMode').addEventListener('change', function() {
             subArpMode = this.value;
         });
-        // Rhythm and Pattern listeners (unchanged)
-        document.getElementById('patternSteps').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('patternBeats').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('patternOffset').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('rhythmSteps').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('rhythmBeats').addEventListener('input', updateRhythmDisplays);
-        document.getElementById('rhythmOffset').addEventListener('input', updateRhythmDisplays);
+
+        // *** Refactor: Rhythm/Pattern Listeners use RhythmManager ***
+        document.getElementById('patternSteps').addEventListener('input', function() {
+            RhythmManager.setPatternSteps(this.value);
+            document.getElementById('patternStepsValue').textContent = this.value;
+            // Adjust max beats for pattern
+            document.getElementById('patternBeats').max = this.value;
+            if (parseInt(document.getElementById('patternBeats').value) > parseInt(this.value)) {
+                document.getElementById('patternBeats').value = this.value;
+                RhythmManager.setPatternBeats(this.value); // Also update manager if changed
+                document.getElementById('patternBeatsValue').textContent = this.value;
+            }
+            // Adjust offset limits
+            const maxOff = Math.floor(parseInt(this.value) / 2);
+            document.getElementById('patternOffset').min = -maxOff;
+            document.getElementById('patternOffset').max = maxOff;
+            if (Math.abs(parseInt(document.getElementById('patternOffset').value)) > maxOff) {
+                document.getElementById('patternOffset').value = 0;
+                RhythmManager.setPatternOffset(0);
+                document.getElementById('patternOffsetValue').textContent = 0;
+            }
+        });
+        document.getElementById('patternBeats').addEventListener('input', function() {
+            RhythmManager.setPatternBeats(this.value);
+            document.getElementById('patternBeatsValue').textContent = this.value;
+        });
+        document.getElementById('patternOffset').addEventListener('input', function() {
+            RhythmManager.setPatternOffset(this.value);
+            document.getElementById('patternOffsetValue').textContent = this.value;
+        });
+        document.getElementById('rhythmSteps').addEventListener('input', function() {
+            RhythmManager.setRhythmSteps(this.value);
+            document.getElementById('rhythmStepsValue').textContent = this.value;
+            // Adjust max beats for rhythm
+            document.getElementById('rhythmBeats').max = this.value;
+            if (parseInt(document.getElementById('rhythmBeats').value) > parseInt(this.value)) {
+                document.getElementById('rhythmBeats').value = this.value;
+                RhythmManager.setRhythmBeats(this.value);
+                document.getElementById('rhythmBeatsValue').textContent = this.value;
+            }
+            // Adjust offset limits
+            const maxOff = Math.floor(parseInt(this.value) / 2);
+            document.getElementById('rhythmOffset').min = -maxOff;
+            document.getElementById('rhythmOffset').max = maxOff;
+            if (Math.abs(parseInt(document.getElementById('rhythmOffset').value)) > maxOff) {
+                document.getElementById('rhythmOffset').value = 0;
+                RhythmManager.setRhythmOffset(0);
+                document.getElementById('rhythmOffsetValue').textContent = 0;
+            }
+        });
+        document.getElementById('rhythmBeats').addEventListener('input', function() {
+            RhythmManager.setRhythmBeats(this.value);
+            document.getElementById('rhythmBeatsValue').textContent = this.value;
+        });
+        document.getElementById('rhythmOffset').addEventListener('input', function() {
+            RhythmManager.setRhythmOffset(this.value);
+            document.getElementById('rhythmOffsetValue').textContent = this.value;
+        });
         document.getElementById('enablePattern').addEventListener('change', function() {
-            isPatternDisabled = !this.checked;
-            updateRhythmDisplays();
-            updatePatternControlsState();
+            RhythmManager.setPatternEnabled(this.checked);
         });
         document.getElementById('enableRhythm').addEventListener('change', function() {
-            isRhythmDisabled = !this.checked;
-            updateRhythmDisplays();
-            updateRhythmControlsState();
+            RhythmManager.setRhythmEnabled(this.checked);
         });
         document.getElementById('enableGateFlex').addEventListener('change', function() {
-            isGateFlexEnabled = this.checked;
+            RhythmManager.setGateFlexEnabled(this.checked);
         });
+
         // TAB SWITCHING (unchanged)
-        document.querySelectorAll('.tab-button').forEach(button => {
-            /* ... unchanged ... */
-            button.addEventListener('click', () => {
-                const tabId = button.dataset.tab;
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-                button.classList.add('active');
-                document.getElementById(tabId).classList.add('active');
+        document.querySelectorAll('.tab-button').forEach(b => {
+            b.addEventListener('click', () => {
+                const id = b.dataset.tab;
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                b.classList.add('active');
+                document.getElementById(id).classList.add('active');
             });
         });
         // --- End Event Listener Setup ---
 
-        function updateTempoDisplay(source) {
+        function updateTempoDisplay(bpmValue, sourceValue) {
             /* ... unchanged ... */
-            if (!source) {
-                source = tempoSource === 'internal' ? 'Internal' : 'External MIDI Clock';
-            }
-            tempoBPMInput.value = bpm;
-            tempoBPMInput.title = `Tempo (BPM): ${source === 'Internal' ? 'Editable' : 'Ext Clock'}`;
-            tempoBPMInput.readOnly = source !== 'Internal';
+            tempoBPMDisplay.value = bpmValue;
+            const isInt = sourceValue === 'internal';
+            tempoBPMDisplay.title = `Tempo (BPM): ${isInt?'Editable':'External Clock'}`;
+            tempoBPMDisplay.readOnly = !isInt;
         }
 
         function populateDeviceSelect(selectElement, devices, includeNoneOption = true) {
             /* ... unchanged ... */
-            while (selectElement.options.length > (includeNoneOption ? 1 : 0)) {
-                selectElement.remove(includeNoneOption ? 1 : 0);
-            }
-            devices.forEach(device => {
-                const option = document.createElement('option');
-                option.value = device.id;
-                option.text = device.name;
-                selectElement.appendChild(option);
+            while (selectElement.options.length > (includeNoneOption ? 1 : 0)) selectElement.remove(includeNoneOption ? 1 : 0);
+            devices.forEach(d => {
+                const o = document.createElement('option');
+                o.value = d.id;
+                o.text = d.name;
+                selectElement.appendChild(o);
             });
         }
 
-        // --- *** Refactor: Callback for NoteInputManager *** ---
         function handleNotesChanged(newHeldNotes, newRawHeldNotes, newPlayedOrder) {
-            // This function is called by NoteInputManager when its state changes.
-
-            // 1. Update Arpeggiator List and Index
-            updateArpeggiatorNoteListAndIndex(); // Relies on global `arpMode` but uses NIM getters internally now
-
-            // 2. Update Playback Keyboard UI
-            updatePlaybackKeyboardUI(); // This function needs to be aware of the new state implicitly or updated
-
-            // 3. Handle Arp Start/Stop based on Key Sync
+            /* ... unchanged ... */
+            updateArpeggiatorNoteListAndIndex();
+            updatePlaybackKeyboardUI();
             if (arpSyncMode === 'key') {
-                if (newRawHeldNotes.length > 0 && !arpRunning) {
-                    startArpeggiator();
-                } else if (newRawHeldNotes.length === 0 && arpRunning) {
-                    stopArpeggiator();
-                }
+                if (newRawHeldNotes.length > 0 && !arpRunning) startArpeggiator();
+                else if (newRawHeldNotes.length === 0 && arpRunning) stopArpeggiator();
             }
-
-            // 4. Handle Shuffle Mode Updates (moved from add/remove)
-            // *** Refactor: Needs access to arpRunning, arpMode, shuffledNotesOrder, stableShuffledOrder ***
             if (arpRunning) {
-                // Find notes added/removed by comparing newRawHeldNotes with previous (lastNotesToArp)
-                const addedNotes = newRawHeldNotes.filter(n => !lastNotesToArp.includes(n));
-                const removedNotes = lastNotesToArp.filter(n => !newRawHeldNotes.includes(n)); // Need lastNotesToArp updated
-
+                const added = newRawHeldNotes.filter(n => !lastNotesToArp.includes(n));
+                const removed = lastNotesToArp.filter(n => !newRawHeldNotes.includes(n));
                 if (arpMode === 'shuffled') {
-                    addedNotes.forEach(note => {
-                        const insertionIndex = Math.floor(Math.random() * (shuffledNotesOrder.length + 1));
-                        shuffledNotesOrder.splice(insertionIndex, 0, note);
-                        if (insertionIndex <= currentNoteIndex) currentNoteIndex++;
+                    added.forEach(n => {
+                        const i = Math.floor(Math.random() * (shuffledNotesOrder.length + 1));
+                        shuffledNotesOrder.splice(i, 0, n);
+                        if (i <= currentNoteIndex) currentNoteIndex++;
                     });
-                    removedNotes.forEach(note => {
-                        const noteIndex = shuffledNotesOrder.indexOf(note);
-                        if (noteIndex !== -1) {
-                            shuffledNotesOrder.splice(noteIndex, 1);
-                            if (noteIndex < currentNoteIndex && currentNoteIndex > 0) currentNoteIndex--;
+                    removed.forEach(n => {
+                        const i = shuffledNotesOrder.indexOf(n);
+                        if (i !== -1) {
+                            shuffledNotesOrder.splice(i, 1);
+                            if (i < currentNoteIndex && currentNoteIndex > 0) currentNoteIndex--;
                             if (currentNoteIndex >= shuffledNotesOrder.length && shuffledNotesOrder.length > 0) currentNoteIndex = shuffledNotesOrder.length - 1;
                             else if (shuffledNotesOrder.length === 0) currentNoteIndex = 0;
                         }
                     });
                 } else if (arpMode === 'stableShuffled') {
-                    addedNotes.forEach(note => {
-                        const insertionIndex = Math.floor(Math.random() * (stableShuffledOrder.length + 1));
-                        stableShuffledOrder.splice(insertionIndex, 0, note);
-                        if (insertionIndex <= stableShuffleIndex) stableShuffleIndex++;
+                    added.forEach(n => {
+                        const i = Math.floor(Math.random() * (stableShuffledOrder.length + 1));
+                        stableShuffledOrder.splice(i, 0, n);
+                        if (i <= stableShuffleIndex) stableShuffleIndex++;
                     });
-                    removedNotes.forEach(note => {
-                        const noteIndex = stableShuffledOrder.indexOf(note);
-                        if (noteIndex !== -1) {
-                            stableShuffledOrder.splice(noteIndex, 1);
-                            if (noteIndex < stableShuffleIndex && stableShuffleIndex > 0) stableShuffleIndex--;
+                    removed.forEach(n => {
+                        const i = stableShuffledOrder.indexOf(n);
+                        if (i !== -1) {
+                            stableShuffledOrder.splice(i, 1);
+                            if (i < stableShuffleIndex && stableShuffleIndex > 0) stableShuffleIndex--;
                             if (stableShuffleIndex >= stableShuffledOrder.length && stableShuffledOrder.length > 0) stableShuffleIndex = stableShuffledOrder.length - 1;
                             else if (stableShuffledOrder.length === 0) stableShuffleIndex = 0;
                         }
                     });
                 }
             }
-            // Update lastNotesToArp *after* comparison
-            lastNotesToArp = newRawHeldNotes; // Keep track for next change
-
+            lastNotesToArp = newRawHeldNotes;
         }
 
-        // MidiManager Callbacks (unchanged from previous step)
+        // MidiManager Callbacks (unchanged)
         const midiManagerCallbacks = {
-            /* ... unchanged ... */
-            onReady: (inputs, outputs) => {
-                populateDeviceSelect(midiInputSelectElem, inputs);
-                populateDeviceSelect(midiOutputSelectElem, outputs);
-                if (inputs.length > 0) {
+            onReady: (i, o) => {
+                populateDeviceSelect(midiInputSelectElem, i);
+                populateDeviceSelect(midiOutputSelectElem, o);
+                if (i.length > 0) {
                     midiInputSelectElem.selectedIndex = 1;
-                    MidiManager.selectInput(inputs[0].id);
+                    MidiManager.selectInput(i[0].id);
                 }
-                if (outputs.length > 0) {
+                if (o.length > 0) {
                     midiOutputSelectElem.selectedIndex = 1;
-                    MidiManager.selectOutput(outputs[0].id);
+                    MidiManager.selectOutput(o[0].id);
                 } else {
                     midiStatusDisplay.innerText += " No MIDI output.";
                     ActiveNoteManager.setMidiOutput(null);
                 }
             },
-            onInputSelected: (inputDevice) => {
-                if (currentMidiInputDevice) {
-                    currentMidiInputDevice.onmidimessage = null;
-                }
-                currentMidiInputDevice = inputDevice;
-                if (currentMidiInputDevice) {
-                    currentMidiInputDevice.onmidimessage = onMIDIMessage;
-                }
+            onInputSelected: (d) => {
+                if (currentMidiInputDevice) currentMidiInputDevice.onmidimessage = null;
+                currentMidiInputDevice = d;
+                if (currentMidiInputDevice) currentMidiInputDevice.onmidimessage = onMIDIMessage;
             },
-            onOutputSelected: (outputDevice) => {
-                ActiveNoteManager.setMidiOutput(outputDevice);
+            onOutputSelected: (d) => {
+                ActiveNoteManager.setMidiOutput(d);
             },
-            onStatusUpdate: (status) => {
-                midiStatusDisplay.innerText = `MIDI Status: ${status}`;
+            onStatusUpdate: (s) => {
+                midiStatusDisplay.innerText = `MIDI Status: ${s}`;
             }
         };
 
-        /** Updates Arpeggiator List/Index - Now uses NoteInputManager getters */
         function updateArpeggiatorNoteListAndIndex() {
-            const previousModeNoteList = [...currentModeNoteList];
-            const previousNoteIndexVal = currentNoteIndex;
-
-            // *** Refactor: Update mode list using NoteInputManager ***
-            const newModeNoteList = updateModeNoteList(); // This function internally uses NoteInputManager getters now
-
-            if (previousModeNoteList.length > 0 && newModeNoteList.length > 0 && arpRunning) {
-                // Note finding logic needs the lists
+            /* ... unchanged, uses NIM getters ... */
+            const prevL = [...currentModeNoteList];
+            const prevI = currentNoteIndex;
+            const newL = updateModeNoteList();
+            if (prevL.length > 0 && newL.length > 0 && arpRunning) {
                 if (['up', 'down', 'upDown', 'upDownInclusive', 'converge', 'diverge', 'convergeDiverge', 'convergeDivergeInclusive', 'walk', 'normalWalk', 'played'].includes(arpMode)) {
-                    const previousNote = (arpMode !== 'chordN' && previousModeNoteList.length > 0) ? previousModeNoteList[previousNoteIndexVal % previousModeNoteList.length] : null;
-                    if (previousNote !== null) {
-                        currentNoteIndex = findClosestNoteIndex(previousNote, previousModeNoteList, newModeNoteList, previousNoteIndexVal);
-                    } else {
-                        currentNoteIndex = (previousNoteIndexVal % previousModeNoteList.length) % newModeNoteList.length;
+                    const pN = (arpMode !== 'chordN' && prevL.length > 0) ? prevL[prevI % prevL.length] : null;
+                    if (pN !== null) currentNoteIndex = findClosestNoteIndex(pN, prevL, newL, prevI);
+                    else {
+                        currentNoteIndex = (prevI % prevL.length) % newL.length;
                         if (!currentNoteIndex) currentNoteIndex = 0;
                     }
                 } else if (arpMode === 'chordN') {
-                    currentNoteIndex = Math.floor((previousNoteIndexVal / previousModeNoteList.length) * newModeNoteList.length) % newModeNoteList.length;
+                    currentNoteIndex = Math.floor((prevI / prevL.length) * newL.length) % newL.length;
                     if (!currentNoteIndex) currentNoteIndex = 0;
                 } else {
-                    currentNoteIndex = (previousNoteIndexVal % previousModeNoteList.length) % newModeNoteList.length;
+                    currentNoteIndex = (prevI % prevL.length) % newL.length;
                     if (!currentNoteIndex) currentNoteIndex = 0;
                 }
             } else {
@@ -1510,134 +1432,35 @@
             }
         }
 
-        // NoteOn/NoteOff/Add/Remove/GenerateOctave/UpdateHeld/FindOriginal Global functions removed (now in NoteInputManager)
-
-
-        /** Updates interactive piano key UI */
         function updatePianoUIForNote(note, source) {
-            // This function is now primarily called by NoteInputManager
             updatePianoKeyboardUI(note, source);
         }
 
         function midiNoteToName(note) {
             /* ... unchanged ... */
-            const octave = Math.floor(note / 12) - 1;
-            const noteName = notes[note % 12];
-            return noteName + octave;
+            const oct = Math.floor(note / 12) - 1;
+            const name = notes[note % 12];
+            return name + oct;
         }
+        // generateEuclideanRhythm removed (internal to RhythmManager)
+        // generateRhythmGateMultipliers removed (internal to RhythmManager)
+        // updateRhythmDisplays removed (replaced by RhythmManager updates)
 
-        function generateEuclideanRhythm(steps, beats, offset, beatEvent, restEvent, isDisabled = false) {
-            /* ... unchanged ... */
-            if (isDisabled || steps <= 0) return new Array(steps > 0 ? steps : 0).fill(beatEvent);
-            beats = Math.min(beats, steps);
-            const r = new Array(steps).fill(restEvent);
-            let bIdx = 0;
-            for (let i = 0; i < steps; i++) {
-                if (Math.floor((bIdx * steps) / beats) === i) {
-                    r[i] = beatEvent;
-                    bIdx++;
-                }
-            }
-            const off = offset % steps;
-            const pOff = off >= 0 ? off : steps + off;
-            if (pOff > 0) return [...r.slice(steps - pOff), ...r.slice(0, steps - pOff)];
-            return r;
+        // --- *** Refactor: UI update functions called by RhythmManager *** ---
+        /** Updates pattern controls enabled state */
+        function updatePatternControlsState(isDisabled) {
+            document.getElementById('patternSteps').disabled = isDisabled;
+            document.getElementById('patternBeats').disabled = isDisabled;
+            document.getElementById('patternOffset').disabled = isDisabled;
         }
-
-        function generateRhythmGateMultipliers(rhythmArray) {
-            /* ... unchanged ... */
-            const len = rhythmArray.length;
-            if (len === 0) return [];
-            const mult = new Array(len).fill(0);
-            for (let i = 0; i < len; i++) {
-                if (rhythmArray[i] === RHYTHM_BEAT) {
-                    let steps = 1;
-                    let next = (i + 1) % len;
-                    while (next !== i && rhythmArray[next] !== RHYTHM_BEAT) {
-                        steps++;
-                        next = (next + 1) % len;
-                    }
-                    if (next === i && steps === len && rhythmArray.filter(s => s === RHYTHM_BEAT).length === 1) mult[i] = len;
-                    else if (next !== i) mult[i] = steps;
-                    else mult[i] = 1;
-                }
-            }
-            return mult;
+        /** Updates rhythm controls enabled state */
+        function updateRhythmControlsState(isDisabled) {
+            document.getElementById('rhythmSteps').disabled = isDisabled;
+            document.getElementById('rhythmBeats').disabled = isDisabled;
+            document.getElementById('rhythmOffset').disabled = isDisabled;
         }
-
-        function updateRhythmDisplays() {
-            /* ... unchanged ... */
-            const pS = document.getElementById('patternSteps');
-            const pB = document.getElementById('patternBeats');
-            const pO = document.getElementById('patternOffset');
-            const rS = document.getElementById('rhythmSteps');
-            const rB = document.getElementById('rhythmBeats');
-            const rO = document.getElementById('rhythmOffset');
-            const pSteps = parseInt(pS.value);
-            let pBeats = parseInt(pB.value);
-            let pOff = parseInt(pO.value);
-            pB.max = pSteps;
-            if (pBeats > pSteps) {
-                pB.value = pSteps;
-                pBeats = pSteps;
-            }
-            const pOffMax = Math.floor(pSteps / 2);
-            pO.min = -pOffMax;
-            pO.max = pOffMax;
-            if (pOff < -pOffMax || pOff > pOffMax) {
-                pO.value = 0;
-                pOff = 0;
-            }
-            patternRhythm = generateEuclideanRhythm(pSteps, pBeats, pOff, PATTERN_NOTE, PATTERN_SKIP, isPatternDisabled);
-            displayRhythm(patternRhythm, 'patternDisplay', isPatternDisabled);
-            document.getElementById('patternStepsValue').textContent = pSteps;
-            document.getElementById('patternBeatsValue').textContent = pBeats;
-            document.getElementById('patternOffsetValue').textContent = pOff;
-            const rSteps = parseInt(rS.value);
-            let rBeats = parseInt(rB.value);
-            let rOff = parseInt(rO.value);
-            rB.max = rSteps;
-            if (rBeats > rSteps) {
-                rB.value = rSteps;
-                rBeats = rSteps;
-            }
-            const rOffMax = Math.floor(rSteps / 2);
-            rO.min = -rOffMax;
-            rO.max = rOffMax;
-            if (rOff < -rOffMax || rOff > rOffMax) {
-                rO.value = 0;
-                rOff = 0;
-            }
-            rhythm = generateEuclideanRhythm(rSteps, rBeats, rOff, RHYTHM_BEAT, RHYTHM_REST, isRhythmDisabled);
-            displayRhythm(rhythm, 'rhythmDisplay', isRhythmDisabled);
-            document.getElementById('rhythmStepsValue').textContent = rSteps;
-            document.getElementById('rhythmBeatsValue').textContent = rBeats;
-            document.getElementById('rhythmOffsetValue').textContent = rOff;
-            rhythmGateMultipliers = generateRhythmGateMultipliers(rhythm);
-            if (!arpRunning) {
-                resetRhythmIndex();
-                resetPatternIndex();
-            }
-        }
-
-        function updatePatternControlsState() {
-            /* ... unchanged ... */
-            const d = isPatternDisabled;
-            document.getElementById('patternSteps').disabled = d;
-            document.getElementById('patternBeats').disabled = d;
-            document.getElementById('patternOffset').disabled = d;
-        }
-
-        function updateRhythmControlsState() {
-            /* ... unchanged ... */
-            const d = isRhythmDisabled;
-            document.getElementById('rhythmSteps').disabled = d;
-            document.getElementById('rhythmBeats').disabled = d;
-            document.getElementById('rhythmOffset').disabled = d;
-        }
-
+        /** Displays rhythm in UI (remains global, called by RhythmManager) */
         function displayRhythm(rhythmArray, displayElementId, isDisabled) {
-            /* ... unchanged ... */
             const disp = document.getElementById(displayElementId);
             disp.innerHTML = '';
             if (!rhythmArray || rhythmArray.length === 0) return;
@@ -1646,14 +1469,20 @@
                 el.classList.add('rhythm-step');
                 el.innerText = ev;
                 el.id = `${displayElementId}-step-${idx}`;
-                if (ev === RHYTHM_BEAT) el.classList.add('beat');
-                else if (ev === RHYTHM_REST) el.classList.add('rest');
-                else if (ev === PATTERN_SKIP) el.classList.add('skip');
-                else if (ev === PATTERN_NOTE) el.classList.add('note');
+                if (ev === RhythmManager.RHYTHM_BEAT) el.classList.add('beat');
+                else if (ev === RhythmManager.RHYTHM_REST) el.classList.add('rest');
+                else if (ev === RhythmManager.PATTERN_SKIP) el.classList.add('skip');
+                else if (ev === RhythmManager.PATTERN_NOTE) el.classList.add('note');
                 if (isDisabled) el.classList.add('disabled-step');
                 disp.appendChild(el);
             });
         }
+        // Add constants to RhythmManager public interface if needed by displayRhythm
+        RhythmManager.RHYTHM_BEAT = 'B';
+        RhythmManager.RHYTHM_REST = 'R';
+        RhythmManager.PATTERN_NOTE = 'N';
+        RhythmManager.PATTERN_SKIP = 'S';
+
 
         // --- Arpeggio Mode Note List Generators (Use NoteInputManager getters) ---
         function generateAlternatingVariant(notes) {
@@ -1689,39 +1518,33 @@
         function generateConvergeNoteList(notes) {
             /* ... unchanged ... */
             if (!notes || notes.length <= 1) return [...(notes || [])];
-            const sortedNotes = [...notes].sort((a, b) => a - b);
-            const convergeList = [];
-            let start = 0;
-            let end = sortedNotes.length - 1;
-            while (start <= end) {
-                convergeList.push(sortedNotes[start]);
-                if (start !== end) {
-                    convergeList.push(sortedNotes[end]);
-                }
-                start++;
-                end--;
+            const sN = [...notes].sort((a, b) => a - b);
+            const cL = [];
+            let s = 0;
+            let e = sN.length - 1;
+            while (s <= e) {
+                cL.push(sN[s]);
+                if (s !== e) cL.push(sN[e]);
+                s++;
+                e--;
             }
-            return convergeList;
+            return cL;
         }
 
         function generateDivergeNoteList(notes) {
             /* ... unchanged ... */
             if (!notes || notes.length <= 1) return [...(notes || [])];
-            const sortedNotes = [...notes].sort((a, b) => a - b);
-            const divergeList = [];
-            let start = Math.floor((sortedNotes.length - 1) / 2);
-            let end = Math.ceil((sortedNotes.length - 1) / 2);
-            while (start >= 0 || end < sortedNotes.length) {
-                if (start >= 0) {
-                    divergeList.push(sortedNotes[start]);
-                }
-                if (start !== end && end < sortedNotes.length) {
-                    divergeList.push(sortedNotes[end]);
-                }
-                start--;
-                end++;
+            const sN = [...notes].sort((a, b) => a - b);
+            const dL = [];
+            let s = Math.floor((sN.length - 1) / 2);
+            let e = Math.ceil((sN.length - 1) / 2);
+            while (s >= 0 || e < sN.length) {
+                if (s >= 0) dL.push(sN[s]);
+                if (s !== e && e < sN.length) dL.push(sN[e]);
+                s--;
+                e++;
             }
-            return divergeList;
+            return dL;
         }
 
         function generateConvergeDivergeNoteList(notes) {
@@ -1731,7 +1554,7 @@
         function generateConvergeDivergeInclusiveNoteList(notes) {
             return generateInclusiveAlternatingVariant(generateConvergeNoteList(notes));
         }
-        // *** Refactor: Use NoteInputManager getter ***
+
         function generatePlayedNoteList(notes) {
             return NoteInputManager.getPlayedNoteOrderFiltered();
         }
@@ -1757,46 +1580,46 @@
         function generateChordNNoteList(notes, n, orderingMode = 'up') {
             /* ... unchanged ... */
             if (!notes || notes.length === 0 || n <= 0) return [];
-            const sortedNotes = [...notes].sort((a, b) => a - b);
-            n = Math.min(n, sortedNotes.length);
-            const combs = [];
+            const sN = [...notes].sort((a, b) => a - b);
+            n = Math.min(n, sN.length);
+            const c = [];
 
-            function cmb(curr, start) {
-                if (curr.length === n) {
-                    combs.push([...curr]);
+            function cmb(cur, sI) {
+                if (cur.length === n) {
+                    c.push([...cur]);
                     return;
                 }
-                if (start >= sortedNotes.length) return;
-                for (let i = start; i < sortedNotes.length; i++) {
-                    if (curr.length + (sortedNotes.length - i) < n) break;
-                    curr.push(sortedNotes[i]);
-                    cmb(curr, i + 1);
-                    curr.pop();
+                if (sI >= sN.length) return;
+                for (let i = sI; i < sN.length; i++) {
+                    if (cur.length + (sN.length - i) < n) break;
+                    cur.push(sN[i]);
+                    cmb(cur, i + 1);
+                    cur.pop();
                 }
             }
             cmb([], 0);
-            if (combs.length === 0) return [];
-            let ord = combs;
+            if (c.length === 0) return [];
+            let o = c;
             switch (orderingMode) {
                 case 'down':
-                    ord = [...combs].reverse();
+                    o = [...c].reverse();
                     break;
                 case 'upDown':
-                    ord = generateAlternatingVariantCombinations(combs);
+                    o = generateAlternatingVariantCombinations(c);
                     break;
                 case 'upDownInclusive':
-                    ord = generateInclusiveAlternatingVariantCombinations(combs);
+                    o = generateInclusiveAlternatingVariantCombinations(c);
                     break;
                 case 'converge':
-                    ord.sort((a, b) => a[0] - b[0]);
-                    ord = generateConvergeCombinations(combs);
+                    o.sort((a, b) => a[0] - b[0]);
+                    o = generateConvergeCombinations(c);
                     break;
                 case 'diverge':
-                    ord.sort((a, b) => a[0] - b[0]);
-                    ord = generateDivergeCombinations(combs);
+                    o.sort((a, b) => a[0] - b[0]);
+                    o = generateDivergeCombinations(c);
                     break;
             }
-            return ord;
+            return o;
         }
 
         function generateAlternatingVariantCombinations(combinations) {
@@ -1814,49 +1637,41 @@
         function generateConvergeCombinations(combinations) {
             /* ... unchanged ... */
             if (!combinations || combinations.length <= 1) return [...(combinations || [])];
-            const list = [];
+            const l = [];
             let s = 0;
             let e = combinations.length - 1;
             while (s <= e) {
-                list.push(combinations[s]);
-                if (s !== e) list.push(combinations[e]);
+                l.push(combinations[s]);
+                if (s !== e) l.push(combinations[e]);
                 s++;
                 e--;
             }
-            return list;
+            return l;
         }
 
         function generateDivergeCombinations(combinations) {
             /* ... unchanged ... */
             if (!combinations || combinations.length <= 1) return [...(combinations || [])];
-            const list = [];
+            const l = [];
             let s = Math.floor((combinations.length - 1) / 2);
             let e = Math.ceil((combinations.length - 1) / 2);
             while (s >= 0 || e < combinations.length) {
-                if (s >= 0) list.push(combinations[s]);
-                if (s !== e && e < combinations.length) list.push(combinations[e]);
+                if (s >= 0) l.push(combinations[s]);
+                if (s !== e && e < combinations.length) l.push(combinations[e]);
                 s--;
                 e++;
             }
-            return list;
+            return l;
         }
 
-        /** Updates mode note list - Uses NoteInputManager */
         function updateModeNoteList() {
-            // *** Refactor: Get notes from NoteInputManager ***
-            let notesToArp = NoteInputManager.getHeldNotes(); // Get current octave-expanded notes
-            let rawNotes = NoteInputManager.getRawHeldNotes(); // Needed for stable shuffle comparison
-
-            // Check if raw held notes actually changed for stable shuffle regeneration
-            if (!arraysAreEqual(rawNotes, lastNotesToArp)) { // Compare raw notes
-                stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5); // Shuffle expanded notes
-                // lastNotesToArp is updated in handleNotesChanged now
-                if (arpMode === 'stableShuffled' && arpRunning) {
-                    stableShuffleIndex = 0; // Reset index on note change if running
-                }
+            /* ... Uses NoteInputManager getters ... */
+            let notesToArp = NoteInputManager.getHeldNotes();
+            let rawNotes = NoteInputManager.getRawHeldNotes();
+            if (!arraysAreEqual(rawNotes, lastNotesToArp)) {
+                stableShuffledOrder = [...notesToArp].sort(() => Math.random() - 0.5);
+                if (arpMode === 'stableShuffled' && arpRunning) stableShuffleIndex = 0;
             }
-
-            // Generate list based on arpMode and notesToArp (expanded notes)
             switch (arpMode) {
                 case 'up':
                     currentModeNoteList = generateUpNoteList(notesToArp);
@@ -1887,28 +1702,24 @@
                     break;
                 case 'random':
                     currentModeNoteList = [];
-                    break; // Uses notesToArp directly in arpStep
+                    break;
                 case 'shuffled':
-                    // Regenerate shuffle only if notes changed OR if arp just started/restarted
-                    // Note change check done via handleNotesChanged callback now
-                    if (!arpRunning || !arraysAreEqual(rawNotes, lastNotesToArp)) {
-                        shuffledNotesOrder = generateShuffledNoteList(notesToArp);
-                    }
+                    if (!arpRunning || !arraysAreEqual(rawNotes, lastNotesToArp)) shuffledNotesOrder = generateShuffledNoteList(notesToArp);
                     currentModeNoteList = shuffledNotesOrder;
                     break;
                 case 'stableShuffled':
-                    currentModeNoteList = stableShuffledOrder; // Uses order potentially updated above
+                    currentModeNoteList = stableShuffledOrder;
                     break;
                 case 'chord':
                     currentModeNoteList = generateChordNoteList(notesToArp);
                     break;
                 case 'chordN':
-                    const order = document.getElementById('chordNOrdering').value;
-                    currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue, order);
+                    const o = document.getElementById('chordNOrdering').value;
+                    currentModeNoteList = generateChordNNoteList(notesToArp, chordNValue, o);
                     break;
                 case 'walk':
                     currentModeNoteList = generateUpNoteList(notesToArp);
-                    break; // Walk modes use sorted list
+                    break;
                 case 'normalWalk':
                     currentModeNoteList = generateUpNoteList(notesToArp);
                     break;
@@ -1919,34 +1730,30 @@
             return currentModeNoteList;
         }
 
-
-        /** Finds closest note index (unchanged logic, uses list passed to it) */
         function findClosestNoteIndex(noteToFind, oldNoteList, newNoteList, previousIndex) {
             /* ... unchanged ... */
             if (!newNoteList || newNoteList.length === 0) return 0;
             if (arpMode === 'chordN' || arpMode === 'chord') {
-                const oldL = oldNoteList?.length || 1;
-                const newL = newNoteList.length;
-                return Math.floor((previousIndex / oldL) * newL) % newL || 0;
+                const oL = oldNoteList?.length || 1;
+                const nL = newNoteList.length;
+                return Math.floor((previousIndex / oL) * nL) % nL || 0;
             }
             for (let i = 0; i < newNoteList.length; i++) {
-                const curI = (previousIndex + i) % newNoteList.length;
-                if (newNoteList[curI] === noteToFind) return curI;
+                const cI = (previousIndex + i) % newNoteList.length;
+                if (newNoteList[cI] === noteToFind) return cI;
             }
-            const first = newNoteList.indexOf(noteToFind);
-            if (first !== -1) return first;
-            const oldLF = oldNoteList?.length || 1;
-            const newLF = newNoteList.length;
-            return Math.floor((previousIndex / oldLF) * newLF) % newLF || 0;
+            const f = newNoteList.indexOf(noteToFind);
+            if (f !== -1) return f;
+            const oLf = oldNoteList?.length || 1;
+            const nLf = newNoteList.length;
+            return Math.floor((previousIndex / oLf) * nLf) % nLf || 0;
         }
 
         function advanceRhythmIndex(steps = 1) {
             /* ... unchanged ... */
-            if (rhythm && rhythm.length > 0) {
-                currentRhythmIndex = (currentRhythmIndex + steps) % rhythm.length;
-            } else {
-                currentRhythmIndex = 0;
-            }
+            let len = RhythmManager.getRhythmLength();
+            if (len > 0) currentRhythmIndex = (currentRhythmIndex + steps) % len;
+            else currentRhythmIndex = 0;
         }
 
         function resetRhythmIndex() {
@@ -1956,11 +1763,9 @@
 
         function advancePatternIndex(steps = 1) {
             /* ... unchanged ... */
-            if (patternRhythm && patternRhythm.length > 0) {
-                currentPatternIndex = (currentPatternIndex + steps) % patternRhythm.length;
-            } else {
-                currentPatternIndex = 0;
-            }
+            let len = RhythmManager.getPatternLength();
+            if (len > 0) currentPatternIndex = (currentPatternIndex + steps) % len;
+            else currentPatternIndex = 0;
         }
 
         function resetPatternIndex() {
@@ -1968,60 +1773,17 @@
             currentPatternIndex = 0;
         }
 
-        function calculateClockDivisionCounterMax(division) {
+        function calculateGateDuration(stepDurationMs, gateLengthPercent, gateMultiplier = 1) {
             /* ... unchanged ... */
-            switch (division) {
-                case '1/1':
-                    return 96;
-                case '1/2':
-                    return 48;
-                case '1/4':
-                    return 24;
-                case '1/8':
-                    return 12;
-                case '1/16':
-                    return 6;
-                case '1/32':
-                    return 3;
-                case '1/2T':
-                    return 32;
-                case '1/4T':
-                    return 16;
-                case '1/8T':
-                    return 8;
-                case '1/16T':
-                    return 4;
-                case '1/32T':
-                    return 2;
-                default:
-                    return 24;
-            }
-        }
-
-        function calculateGateDuration(clockDivisionDurationMs, gateLengthPercent, gateMultiplier = 1) {
-            /* ... unchanged ... */
-            if (clockDivisionDurationMs <= 0 || gateLengthPercent <= 0) return 5;
-            const base = (clockDivisionDurationMs * gateLengthPercent) / 100;
+            if (stepDurationMs <= 0 || gateLengthPercent <= 0) return 5;
+            const base = (stepDurationMs * gateLengthPercent) / 100;
             return Math.max(5, base * gateMultiplier);
         }
 
-        function setupInternalClock() {
-            /* ... unchanged ... */
-            clearInterval(internalClockInterval);
-            if (bpm <= 0) bpm = 1;
-            const ticksPerSec = (bpm / 60) * 24;
-            const intMs = 1000 / ticksPerSec;
-            internalClockInterval = setInterval(tick, intMs);
-            clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
-            tickCounter = -1;
-            clockDivisionDurationMs = intMs * clockDivisionCounterMax;
-            updateTempoDisplay();
-        }
-
-        /** Starts Arpeggiator - Uses NoteInputManager */
         function startArpeggiator() {
+            /* ... unchanged ... */
             if (arpRunning) return;
-            updateModeNoteList(); // Uses NIM getters
+            updateModeNoteList();
             if (arpMode === 'shuffled') {
                 shuffledNotesOrder = generateShuffledNoteList(NoteInputManager.getHeldNotes());
                 currentModeNoteList = shuffledNotesOrder;
@@ -2030,37 +1792,22 @@
             startButton.disabled = true;
             stopButton.disabled = false;
             startButton.classList.add('playing');
-            stopButton.classList.remove('playing');
-            updateRhythmDisplays();
+            stopButton.classList.remove('playing'); /* RhythmManager.initialize(); Re-init rhythms? Or just reset indices? */
             resetRhythmIndex();
             resetPatternIndex();
             currentNoteIndex = 0;
             stableShuffleIndex = 0;
-            if ((arpMode === 'walk' || arpMode === 'normalWalk') && currentModeNoteList && currentModeNoteList.length > 0) {
-                currentNoteIndex = Math.floor(currentModeNoteList.length / 2);
-            }
+            if ((arpMode === 'walk' || arpMode === 'normalWalk') && currentModeNoteList && currentModeNoteList.length > 0) currentNoteIndex = Math.floor(currentModeNoteList.length / 2);
             playbackDisplayElem.innerHTML = '';
             ActiveNoteManager.allNotesOff();
-            if (tempoSource === 'internal') setupInternalClock();
-            else {
-                /* ... external clock setup unchanged ... */
-                clockDivisionCounterMax = calculateClockDivisionCounterMax(clockDivision);
-                tickCounter = -1;
-                if (bpm > 0) {
-                    const avg = 60000 / (bpm * 24);
-                    clockDivisionDurationMs = avg * clockDivisionCounterMax;
-                } else clockDivisionDurationMs = 0;
-                updateTempoDisplay('External MIDI Clock');
-            }
+            ClockManager.start();
         }
-        /** Stops Arpeggiator - Uses NoteInputManager */
+
         function stopArpeggiator() {
+            /* ... unchanged ... */
             if (!arpRunning) return;
             arpRunning = false;
-            if (tempoSource === 'internal') {
-                clearInterval(internalClockInterval);
-                internalClockInterval = null;
-            }
+            ClockManager.stop();
             startButton.disabled = false;
             stopButton.disabled = true;
             stopButton.classList.add('playing');
@@ -2070,150 +1817,89 @@
             unhighlightPlaybackPianoKeys();
         }
 
-        function tick() {
-            /* ... unchanged ... */
-            if (!arpRunning && tempoSource === 'external') return;
-            tickCounter++;
-            if (tickCounter >= 0 && (tickCounter % clockDivisionCounterMax === 0)) {
-                arpStep();
-            }
-        }
-
-        function handleMIDITick() {
-            /* ... unchanged ... */
-            if (tempoSource === 'external') {
-                const now = performance.now();
-                for (let i = 0; i < tickHistorySize - 1; i++) tickHistory[i] = tickHistory[i + 1];
-                tickHistory[tickHistorySize - 1] = now;
-                tickIndex++;
-                if (tickIndex >= tickHistorySize) {
-                    const first = tickHistory[0];
-                    const last = tickHistory[tickHistorySize - 1];
-                    const dur = last - first;
-                    const avg = dur / (tickHistorySize - 1);
-                    if (avg > 0) {
-                        bpm = Math.round(60000 / (avg * 24));
-                        const latest = tickHistory[tickHistorySize - 1] - tickHistory[tickHistorySize - 2];
-                        if (latest > 0) clockDivisionDurationMs = latest * clockDivisionCounterMax;
-                        else clockDivisionDurationMs = avg * clockDivisionCounterMax;
-                        updateTempoDisplay();
-                    }
-                } else if (tickIndex > 1) {
-                    const latest = tickHistory[tickIndex - 1] - tickHistory[tickIndex - 2];
-                    if (latest > 0) {
-                        bpm = Math.round(60000 / (latest * 24));
-                        clockDivisionDurationMs = latest * clockDivisionCounterMax;
-                        updateTempoDisplay();
-                    }
-                }
-                tick();
-            }
-        }
-
-
-        /** Handles incoming MIDI messages - Calls NoteInputManager handlers */
+        /** Handles incoming MIDI - Uses ClockManager */
         function onMIDIMessage(message) {
-            const command = message.data[0];
-            const commandHiBits = (command & 0xF0) >> 4;
-            const commandLoBits = command & 0x0F;
-            const byte1 = message.data.length > 1 ? message.data[1] : 0;
-            const byte2 = message.data.length > 2 ? message.data[2] : 0;
-
-            // Clock & Transport (unchanged)
-            if (command === 0xF8) {
-                handleMIDITick();
+            /* ... unchanged ... */
+            const cmd = message.data[0];
+            if (cmd === 0xF8) {
+                ClockManager.externalTick();
                 return;
             }
-            if (command === 0xFA) {
+            if (cmd === 0xFA) {
                 if (arpSyncMode === 'transport') {
                     resetRhythmIndex();
                     resetPatternIndex();
                     currentNoteIndex = 0;
                     stableShuffleIndex = 0;
-                    tickCounter = -1;
+                    ClockManager.start();
                     if (!arpRunning) startArpeggiator();
                 }
                 return;
             }
-            if (command === 0xFC) {
+            if (cmd === 0xFC) {
                 if (arpSyncMode === 'transport') {
                     if (arpRunning) stopArpeggiator();
                 }
                 return;
             }
-            if (command === 0xFB) {
+            if (cmd === 0xFB) {
                 if (arpSyncMode === 'transport') {
                     if (!arpRunning) startArpeggiator();
                 }
                 return;
             }
-
-            // Channel Message Processing (Use MidiManager config check - unchanged)
-            let processChannelMessage = false;
-            let inputChannel = commandLoBits;
-            const mpeInputConfig = MidiManager.getMPEInputConfig();
-            const baseOutputChannel = MidiManager.getOutputChannel();
-            if (mpeInputConfig.isEnabled) {
-                /* ... MPE channel check unchanged ... */
-                const glb = mpeInputConfig.globalChannel;
-                const vc = mpeInputConfig.voiceChannelCount;
-                if (glb === 'omni') processChannelMessage = true;
+            const hi = (cmd & 0xF0) >> 4;
+            const lo = cmd & 0x0F;
+            const b1 = message.data.length > 1 ? message.data[1] : 0;
+            const b2 = message.data.length > 2 ? message.data[2] : 0;
+            let proc = false;
+            let iCh = lo;
+            const mCfg = MidiManager.getMPEInputConfig();
+            const bOutCh = MidiManager.getOutputChannel();
+            if (mCfg.isEnabled) {
+                const g = mCfg.globalChannel;
+                const v = mCfg.voiceChannelCount;
+                if (g === 'omni') proc = true;
                 else {
-                    const gCh = parseInt(glb);
-                    if (!isNaN(gCh)) {
-                        const baseG = (gCh - 1);
-                        if (inputChannel === baseG || (inputChannel > baseG && inputChannel <= baseG + vc)) processChannelMessage = true;
+                    const gN = parseInt(g);
+                    if (!isNaN(gN)) {
+                        const bG = (gN - 1);
+                        if (iCh === bG || (iCh > bG && iCh <= bG + v)) proc = true;
                     }
                 }
             } else {
-                if (inputChannel === baseOutputChannel) processChannelMessage = true;
+                if (iCh === bOutCh) proc = true;
             }
-
-            if (processChannelMessage) {
-                // *** Refactor: Call NoteInputManager handlers ***
-                if (commandHiBits === 0x9) { // Note On
-                    const note = byte1;
-                    const velocity = byte2;
-                    if (velocity > 0) NoteInputManager.handleNoteOn(note, 'midi', inputChannel);
-                    else NoteInputManager.handleNoteOff(note, 'midi', inputChannel);
-                } else if (commandHiBits === 0x8) { // Note Off
-                    const note = byte1;
-                    NoteInputManager.handleNoteOff(note, 'midi', inputChannel);
-                } else if (commandHiBits === 0xA) { // Poly Aftertouch
-                    const note = byte1;
-                    const pressure = byte2;
-                    // No need to find original note here, handlePressureUpdate expects raw note for poly
-                    NoteInputManager.handlePressureUpdate(note, pressure, true);
-                } else if (commandHiBits == 0xB) { // CC
-                    const ccNumber = byte1;
-                    const ccValue = byte2;
-                    if (ccNumber === 64) { // Sustain
-                        NoteInputManager.handleSustain(ccValue >= 64);
-                    } else if (mpeInputConfig.isEnabled && ccNumber == 74) { // MPE Y-Axis/Timbre
-                        // Find the raw note associated with this channel first
-                        const channelNote = NoteInputManager.getMPEChannelNote(inputChannel);
-                        if (channelNote !== null) {
-                            NoteInputManager.handleMPEYAxisUpdate(channelNote, ccValue);
-                        }
+            if (proc) {
+                if (hi === 0x9) {
+                    const n = b1;
+                    const vl = b2;
+                    if (vl > 0) NoteInputManager.handleNoteOn(n, 'midi', iCh);
+                    else NoteInputManager.handleNoteOff(n, 'midi', iCh);
+                } else if (hi === 0x8) {
+                    const n = b1;
+                    NoteInputManager.handleNoteOff(n, 'midi', iCh);
+                } else if (hi === 0xA) {
+                    const n = b1;
+                    const p = b2;
+                    NoteInputManager.handlePressureUpdate(n, p, true);
+                } else if (hi === 0xB) {
+                    const cc = b1;
+                    const v = b2;
+                    if (cc === 64) NoteInputManager.handleSustain(v >= 64);
+                    else if (mCfg.isEnabled && cc === 74) {
+                        const cN = NoteInputManager.getMPEChannelNote(iCh);
+                        if (cN !== null) NoteInputManager.handleMPEYAxisUpdate(cN, v);
                     }
-                } else if (commandHiBits === 0xD) { // Channel Pressure
-                    const pressure = byte1;
-                    if (mpeInputConfig.isEnabled) {
-                        // Find the raw note associated with this channel first
-                        const channelNote = NoteInputManager.getMPEChannelNote(inputChannel);
-                        if (channelNote !== null) {
-                            // Channel pressure applies to the specific note on the channel
-                            NoteInputManager.handlePressureUpdate(channelNote, pressure, false); // false = channel pressure
-                        }
+                } else if (hi === 0xD) {
+                    const p = b1;
+                    if (mCfg.isEnabled) {
+                        const cN = NoteInputManager.getMPEChannelNote(iCh);
+                        if (cN !== null) NoteInputManager.handlePressureUpdate(cN, p, false);
                     } else {
-                        // Non-MPE: Apply pressure to *all* held raw notes on base channel
-                        if (inputChannel === baseOutputChannel) {
-                            NoteInputManager.getRawHeldNotes().forEach(rawNote => {
-                                // Check if it was a MIDI note (not UI) before applying channel pressure
-                                // This check might be slightly redundant if rawHeldNotes only contains MIDI notes when non-MPE, but safer.
-                                if (_heldNotesMIDI.has(rawNote)) { // Need direct access here, or add getter
-                                    NoteInputManager.handlePressureUpdate(rawNote, pressure, false);
-                                }
+                        if (iCh === bOutCh) {
+                            NoteInputManager.getRawHeldNotes().forEach(rN => {
+                                if (NoteInputManager.hasHeldMIDINote(rN)) NoteInputManager.handlePressureUpdate(rN, p, false);
                             });
                         }
                     }
@@ -2221,88 +1907,81 @@
             }
         }
 
-
-        // FindOriginalNote function removed (now internal to NoteInputManager)
-
-        /** Executes Arp Step - Uses NoteInputManager */
+        /** Executes Arp Step - Uses RhythmManager getters */
         function arpStep() {
             if (!arpRunning) return;
             unhighlightCurrentStep();
 
-            // Update time held & check limit (uses ActiveNoteManager)
-            let notesToStopTimeLimit = [];
-            ActiveNoteManager.getActiveNotesMap().forEach((state, note) => {
-                /* ... unchanged ... */
-                if (state.isExtended && state.noteOffTimeoutId === null) {
-                    const newT = state.timeHeldDivisions + 1;
-                    ActiveNoteManager.updateNoteState(note, {
-                        timeHeldDivisions: newT
+            // Update time held (uses ActiveNoteManager) - unchanged
+            let notesToStop = [];
+            ActiveNoteManager.getActiveNotesMap().forEach((s, n) => {
+                if (s.isExtended && s.noteOffTimeoutId === null) {
+                    const nT = s.timeHeldDivisions + 1;
+                    ActiveNoteManager.updateNoteState(n, {
+                        timeHeldDivisions: nT
                     });
-                    if (newT >= maxTimeExtensionDivisions) notesToStopTimeLimit.push(note);
-                } else if (!state.isExtended) {
-                    if (state.timeHeldDivisions !== 0 || state.chordsHeldCount !== 0) {
-                        ActiveNoteManager.updateNoteState(note, {
-                            timeHeldDivisions: 0,
-                            chordsHeldCount: 0
-                        });
-                    }
+                    if (nT >= maxTimeExtensionDivisions) notesToStop.push(n);
+                } else if (!s.isExtended) {
+                    if (s.timeHeldDivisions !== 0 || s.chordsHeldCount !== 0) ActiveNoteManager.updateNoteState(n, {
+                        timeHeldDivisions: 0,
+                        chordsHeldCount: 0
+                    });
                 }
             });
-            notesToStopTimeLimit.forEach(note => {
-                const state = ActiveNoteManager.getActiveNotesMap().get(note);
-                if (state) {
-                    ActiveNoteManager.updateNoteState(note, {
+            notesToStop.forEach(n => {
+                const s = ActiveNoteManager.getActiveNotesMap().get(n);
+                if (s) {
+                    ActiveNoteManager.updateNoteState(n, {
                         isExtended: false
                     });
-                    ActiveNoteManager.stopNote(note, state.outputChannel);
+                    ActiveNoteManager.stopNote(n, s.outputChannel);
                 }
             });
 
-            // *** Refactor: Get notes from NoteInputManager ***
-            let notesToArpSource = NoteInputManager.getHeldNotes();
-
-            // Free sync / Stop check
-            if (arpSyncMode === 'free' && notesToArpSource.length === 0) {
-                /* ... unchanged ... */
+            // Determine notes (uses NoteInputManager) - unchanged
+            let notesToArp = NoteInputManager.getHeldNotes();
+            if (arpSyncMode === 'free' && notesToArp.length === 0) {
                 advanceRhythmIndex();
                 advancePatternIndex();
                 updatePlaybackDisplay('rest', null);
                 highlightCurrentStep('rest', null);
                 return;
             }
-            if (notesToArpSource.length === 0 && arpSyncMode !== 'free') {
+            if (notesToArp.length === 0 && arpSyncMode !== 'free') {
                 stopArpeggiator();
                 return;
             }
 
-            // Shuffle update (driven by handleNotesChanged callback now)
-
-            // Rhythm/Pattern logic (unchanged)
+            // --- *** Refactor: Rhythm/Pattern logic uses RhythmManager getters *** ---
             let noteForStep = '';
             let chordForStep = null;
             let stepType = null;
             let advanceNoteIndices = true;
-            const currentRhythmEvent = (rhythm && rhythm.length > 0) ? rhythm[currentRhythmIndex % rhythm.length] : RHYTHM_BEAT;
-            const patternEventActive = !isPatternDisabled;
-            const rhythmEventActive = !isRhythmDisabled;
-            let effectiveRhythmEvent = (rhythmEventActive) ? currentRhythmEvent : RHYTHM_BEAT;
 
-            if (effectiveRhythmEvent === RHYTHM_BEAT) {
-                /* ... beat logic unchanged ... */
-                let processed = false;
-                let iters = 0;
-                const maxIters = (patternRhythm?.length || 1) * 2;
-                while (!processed && iters < maxIters) {
-                    const pEv = (patternRhythm && patternRhythm.length > 0) ? patternRhythm[currentPatternIndex % patternRhythm.length] : PATTERN_NOTE;
-                    const effPEv = patternEventActive ? pEv : PATTERN_NOTE;
-                    if (effPEv === PATTERN_NOTE) {
+            const currentRhythmEvent = RhythmManager.getRhythmEvent(currentRhythmIndex); // Use getter
+            const patternEventActive = RhythmManager.isPatternActive(); // Use getter
+            const rhythmEventActive = RhythmManager.isRhythmActive(); // Use getter
+
+            let effectiveRhythmEvent = rhythmEventActive ? currentRhythmEvent : RhythmManager.RHYTHM_BEAT; // Use constant
+
+            if (effectiveRhythmEvent === RhythmManager.RHYTHM_BEAT) {
+                let patternProcessed = false;
+                let patternIterations = 0;
+                const maxPatternIterations = (RhythmManager.getPatternLength() || 1) * 2; // Use getter
+
+                while (!patternProcessed && patternIterations < maxPatternIterations) {
+                    const currentPatternEvent = RhythmManager.getPatternEvent(currentPatternIndex); // Use getter
+                    const effectivePatternEvent = patternEventActive ? currentPatternEvent : RhythmManager.PATTERN_NOTE; // Use constant
+
+                    if (effectivePatternEvent === RhythmManager.PATTERN_NOTE) {
+                        // Note selection logic remains the same
                         chordForStep = null;
                         noteForStep = '';
                         if (arpMode === 'chord' || arpMode === 'chordN') {
-                            /*...*/
+                            /*..*/
                             if (currentModeNoteList && currentModeNoteList.length > 0) {
-                                const idx = currentNoteIndex % currentModeNoteList.length;
-                                chordForStep = currentModeNoteList[idx];
+                                const i = currentNoteIndex % currentModeNoteList.length;
+                                chordForStep = currentModeNoteList[i];
                                 if (chordForStep && chordForStep.length > 0) {
                                     playNotes(chordForStep, subArpMode);
                                     stepType = 'note';
@@ -2318,7 +1997,7 @@
                                 advanceNoteIndices = false;
                             }
                         } else if (arpMode === 'random') {
-                            if (notesToArpSource.length > 0) noteForStep = notesToArpSource[Math.floor(Math.random() * notesToArpSource.length)];
+                            if (notesToArp.length > 0) noteForStep = notesToArp[Math.floor(Math.random() * notesToArp.length)];
                             else advanceNoteIndices = false;
                         } else if (arpMode === 'walk' || arpMode === 'normalWalk') {
                             if (currentModeNoteList && currentModeNoteList.length > 0) noteForStep = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
@@ -2327,6 +2006,7 @@
                             if (currentModeNoteList && currentModeNoteList.length > 0) noteForStep = currentModeNoteList[currentNoteIndex % currentModeNoteList.length];
                             else advanceNoteIndices = false;
                         }
+                        // Play note logic remains the same
                         if (noteForStep !== '' && arpMode !== 'chord' && arpMode !== 'chordN') {
                             playNotes(noteForStep);
                             stepType = 'note';
@@ -2336,49 +2016,49 @@
                             highlightCurrentStep('rest', null);
                             advanceNoteIndices = false;
                         }
-                        processed = true;
+                        patternProcessed = true;
                         advancePatternIndex();
-                    } else if (effPEv === PATTERN_SKIP) {
-                        /*...*/
+                    } else if (effectivePatternEvent === RhythmManager.PATTERN_SKIP) {
+                        // Skip logic remains the same
                         advancePatternIndex();
                         if (arpMode !== 'random' && arpMode !== 'walk' && arpMode !== 'normalWalk') {
                             currentNoteIndex++;
                             if (arpMode === 'stableShuffled') stableShuffleIndex++;
                         }
                         stepType = 'skip';
-                        iters++;
+                        patternIterations++;
                     } else {
-                        console.error("Unknown pattern:", pEv);
+                        console.error("Unknown pattern event:", currentPatternEvent);
                         stepType = 'error';
-                        processed = true;
+                        patternProcessed = true;
                         advancePatternIndex();
                         advanceNoteIndices = false;
                     }
-                    if (iters >= maxIters && !processed) {
+                    if (patternIterations >= maxPatternIterations && !patternProcessed) {
                         console.warn("Pattern loop limit");
                         stepType = 'rest';
                         advanceNoteIndices = false;
-                        processed = true;
+                        patternProcessed = true;
                     }
-                }
-            } else if (effectiveRhythmEvent === RHYTHM_REST) {
-                /* ... rest logic unchanged ... */
+                } // End while
+            } else if (effectiveRhythmEvent === RhythmManager.RHYTHM_REST) {
                 stepType = 'rest';
                 highlightCurrentStep('rest', null);
                 advanceNoteIndices = false;
             } else {
-                console.error("Unknown rhythm:", currentRhythmEvent);
+                console.error("Unknown rhythm event:", currentRhythmEvent);
                 stepType = 'error_arp_rhythm';
                 highlightCurrentStep('error', null);
                 advanceNoteIndices = false;
             }
+            // --- End Rhythm/Pattern logic refactor ---
 
             // Update Playback Display (unchanged)
             if (stepType !== null) {
-                let noteToDisp = null;
-                let isChordDisp = (stepType === 'note' && !!chordForStep);
-                if (stepType === 'note' && !isChordDisp) noteToDisp = noteForStep;
-                updatePlaybackDisplay(stepType, noteToDisp, isChordDisp);
+                let nD = null;
+                let iC = (stepType === 'note' && !!chordForStep);
+                if (stepType === 'note' && !iC) nD = noteForStep;
+                updatePlaybackDisplay(stepType, nD, iC);
             }
 
             // Advance Indices (unchanged)
@@ -2402,12 +2082,13 @@
         function calculateVelocity(pressure) {
             /* ... unchanged ... */
             pressure = Math.max(0, Math.min(127, pressure || 0));
-            let vel = baseVelocityValue + (maxVelocityValue - baseVelocityValue) * (pressure / 127);
-            return Math.max(1, Math.min(127, Math.round(vel)));
+            let v = baseVelocityValue + (maxVelocityValue - baseVelocityValue) * (pressure / 127);
+            return Math.max(1, Math.min(127, Math.round(v)));
         }
 
         function findNextPlayedChordInfo(maxLookahead = LOOKAHEAD_MAX_STEPS) {
-            /* ... unchanged ... */
+            /* ... unchanged, uses RhythmManager getters ... */
+            // Need to use RhythmManager getters inside the loop simulation
             if (arpMode !== 'chordN' || !currentModeNoteList || currentModeNoteList.length === 0) return {
                 nextChordIndex: null,
                 nextChordNotes: null,
@@ -2416,22 +2097,24 @@
             let simR = currentRhythmIndex;
             let simP = currentPatternIndex;
             let simC = currentNoteIndex;
-            let steps = 0;
+            let st = 0;
             for (let i = 0; i < maxLookahead; i++) {
-                steps++;
-                simR = (simR + 1) % (rhythm?.length || 1);
-                const rE = (rhythm && rhythm.length > 0 && !isRhythmDisabled) ? rhythm[simR] : RHYTHM_BEAT;
-                if (rE === RHYTHM_BEAT) {
-                    simP = (simP + 1) % (patternRhythm?.length || 1);
-                    const pE = (patternRhythm && patternRhythm.length > 0 && !isPatternDisabled) ? patternRhythm[simP] : PATTERN_NOTE;
-                    if (pE === PATTERN_NOTE) {
+                st++;
+                simR = (simR + 1) % (RhythmManager.getRhythmLength() || 1); // Use getter for length
+                const rE = RhythmManager.isRhythmActive() ? RhythmManager.getRhythmEvent(simR) : RhythmManager.RHYTHM_BEAT; // Use getters
+
+                if (rE === RhythmManager.RHYTHM_BEAT) {
+                    simP = (simP + 1) % (RhythmManager.getPatternLength() || 1); // Use getter for length
+                    const pE = RhythmManager.isPatternActive() ? RhythmManager.getPatternEvent(simP) : RhythmManager.PATTERN_NOTE; // Use getters
+
+                    if (pE === RhythmManager.PATTERN_NOTE) {
                         simC = (simC + 1) % currentModeNoteList.length;
                         return {
                             nextChordIndex: simC,
                             nextChordNotes: currentModeNoteList[simC],
-                            stepsToNextChord: steps
+                            stepsToNextChord: st
                         };
-                    } else if (pE === PATTERN_SKIP) {
+                    } else if (pE === RhythmManager.PATTERN_SKIP) {
                         simC = (simC + 1) % currentModeNoteList.length;
                     }
                 }
@@ -2439,11 +2122,11 @@
             return {
                 nextChordIndex: null,
                 nextChordNotes: null,
-                stepsToNextChord: steps
-            };
+                stepsToNextChord: st
+            }; // Lookahead failed
         }
 
-        /** Plays notes - Uses NoteInputManager and ActiveNoteManager */
+        /** Plays notes - Uses ClockManager & RhythmManager */
         function playNotes(notesOrChord, subArpModeOverride = subArpMode) {
             const outputChannel = MidiManager.getOutputChannel();
             const notesArray = Array.isArray(notesOrChord) ? notesOrChord : [notesOrChord];
@@ -2456,97 +2139,102 @@
                 nextChordNotes: null,
                 stepsToNextChord: 0
             };
-            if (arpMode === 'chordN') nextPlayedInfo = findNextPlayedChordInfo();
-            const currentGateMultiplier = (isGateFlexEnabled && rhythmGateMultipliers && rhythm.length > 0) ? (rhythmGateMultipliers[currentRhythmIndex % rhythm.length] || 1) : 1;
+            if (arpMode === 'chordN') nextPlayedInfo = findNextPlayedChordInfo(); // Uses RhythmManager getters internally
+
+            // *** Refactor: Use RhythmManager getter ***
+            const useGateFlex = RhythmManager.isGateFlexEnabled();
+            const currentGateMultiplier = useGateFlex ?
+                (RhythmManager.getRhythmGateMultiplier(currentRhythmIndex) || 1) :
+                1;
+
+            const stepDurationMs = ClockManager.getClockDivisionDurationMs();
 
             if (useSubArp) {
                 /* ... sub arp logic unchanged, uses ActiveNoteManager ... */
-                const subDur = (clockDivisionDurationMs * subArpScalePercentage) / 100;
+                const subDur = (stepDurationMs * subArpScalePercentage) / 100;
                 const spacing = notesArray.length > 1 ? subDur / notesArray.length : 0;
-                let subNotes = [...notesArray];
+                let subN = [...notesArray];
                 switch (subArpModeOverride) {
                     case 'up':
-                        subNotes.sort((a, b) => a - b);
+                        subN.sort((a, b) => a - b);
                         break;
                     case 'down':
-                        subNotes.sort((a, b) => b - a);
+                        subN.sort((a, b) => b - a);
                         break;
                     case 'random':
-                        subNotes.sort(() => Math.random() - 0.5);
+                        subN.sort(() => Math.random() - 0.5);
                         break;
                     case 'converge':
-                        subNotes = generateConvergeNoteList(subNotes);
+                        subN = generateConvergeNoteList(subN);
                         break;
                     case 'diverge':
-                        subNotes = generateDivergeNoteList(subNotes);
+                        subN = generateDivergeNoteList(subN);
                         break;
                     default:
-                        subNotes.sort((a, b) => a - b);
+                        subN.sort((a, b) => a - b);
                         break;
                 }
-                subNotes.forEach((expNote, index) => {
-                    const origNote = NoteInputManager.findOriginalNote(expNote);
-                    if (origNote === null) return;
-                    const press = NoteInputManager.getNotePressure(origNote);
-                    const vel = calculateVelocity(press);
-                    const delay = spacing * index;
+                subN.forEach((eN, idx) => {
+                    const oN = NoteInputManager.findOriginalNote(eN);
+                    if (oN === null) return;
+                    const pr = NoteInputManager.getNotePressure(oN);
+                    const vl = calculateVelocity(pr);
+                    const d = spacing * idx;
                     setTimeout(() => {
-                        const isActive = ActiveNoteManager.hasNote(expNote);
-                        const state = isActive ? ActiveNoteManager.getActiveNotesMap().get(expNote) : null;
-                        const isExt = isActive && state && state.isExtended;
-                        if (!isExt) {
-                            ActiveNoteManager.startNote(expNote, vel, outputChannel);
-                            const subGateDur = calculateGateDuration(spacing > 0 ? spacing : clockDivisionDurationMs, gateLengthPercentage, 1);
-                            ActiveNoteManager.scheduleNoteOff(expNote, subGateDur, outputChannel);
+                        const act = ActiveNoteManager.hasNote(eN);
+                        const st = act ? ActiveNoteManager.getActiveNotesMap().get(eN) : null;
+                        const ext = act && st && st.isExtended;
+                        if (!ext) {
+                            ActiveNoteManager.startNote(eN, vl, outputChannel);
+                            const sGD = calculateGateDuration(spacing > 0 ? spacing : stepDurationMs, gateLengthPercentage, 1);
+                            ActiveNoteManager.scheduleNoteOff(eN, sGD, outputChannel);
                         }
-                    }, delay);
+                    }, d);
                 });
             } else {
                 /* ... simultaneous play logic unchanged, uses ActiveNoteManager & NoteInputManager ... */
-                notesArray.forEach(expNote => {
-                    const origNote = NoteInputManager.findOriginalNote(expNote);
-                    if (origNote === null) return;
-                    const press = NoteInputManager.getNotePressure(origNote);
-                    const vel = calculateVelocity(press);
-                    const isActive = ActiveNoteManager.hasNote(expNote);
-                    const state = isActive ? ActiveNoteManager.getActiveNotesMap().get(expNote) : null;
-                    const isInNext = (arpMode === 'chordN' && nextPlayedInfo.nextChordNotes?.includes(expNote));
-                    if (isActive && state) {
-                        ActiveNoteManager.cancelNoteOff(expNote);
-                        const canContCount = state.chordsHeldCount < (maxChordExtension - 1);
-                        const estTime = state.timeHeldDivisions + nextPlayedInfo.stepsToNextChord;
-                        const canContTime = estTime <= maxTimeExtensionDivisions;
-                        const contExt = arpMode === 'chordN' && isInNext && canContCount && canContTime;
-                        if (contExt) {
-                            ActiveNoteManager.updateNoteState(expNote, {
-                                isExtended: true,
-                                chordsHeldCount: state.chordsHeldCount + 1,
-                                noteOffTimeoutId: null
-                            });
-                        } else {
-                            ActiveNoteManager.updateNoteState(expNote, {
+                notesArray.forEach(eN => {
+                    const oN = NoteInputManager.findOriginalNote(eN);
+                    if (oN === null) return;
+                    const pr = NoteInputManager.getNotePressure(oN);
+                    const vl = calculateVelocity(pr);
+                    const act = ActiveNoteManager.hasNote(eN);
+                    const st = act ? ActiveNoteManager.getActiveNotesMap().get(eN) : null;
+                    const isInNxt = (arpMode === 'chordN' && nextPlayedInfo.nextChordNotes?.includes(eN));
+                    if (act && st) {
+                        ActiveNoteManager.cancelNoteOff(eN);
+                        const ccc = st.chordsHeldCount < (maxChordExtension - 1);
+                        const et = st.timeHeldDivisions + nextPlayedInfo.stepsToNextChord;
+                        const cct = et <= maxTimeExtensionDivisions;
+                        const ce = arpMode === 'chordN' && isInNxt && ccc && cct;
+                        if (ce) ActiveNoteManager.updateNoteState(eN, {
+                            isExtended: true,
+                            chordsHeldCount: st.chordsHeldCount + 1,
+                            noteOffTimeoutId: null
+                        });
+                        else {
+                            ActiveNoteManager.updateNoteState(eN, {
                                 isExtended: false,
                                 chordsHeldCount: 0
                             });
-                            const gateDur = calculateGateDuration(clockDivisionDurationMs, gateLengthPercentage, currentGateMultiplier);
-                            ActiveNoteManager.scheduleNoteOff(expNote, gateDur, outputChannel);
+                            const gD = calculateGateDuration(stepDurationMs, gateLengthPercentage, currentGateMultiplier);
+                            ActiveNoteManager.scheduleNoteOff(eN, gD, outputChannel);
                         }
                     } else {
-                        const canStartExt = maxChordExtension > 1;
-                        const canStartTime = nextPlayedInfo.stepsToNextChord <= maxTimeExtensionDivisions;
-                        const startExt = arpMode === 'chordN' && isInNext && canStartExt && canStartTime;
-                        ActiveNoteManager.startNote(expNote, vel, outputChannel);
-                        const newState = ActiveNoteManager.getActiveNotesMap().get(expNote);
-                        if (startExt && newState) {
-                            ActiveNoteManager.updateNoteState(expNote, {
-                                isExtended: true,
-                                chordsHeldCount: 1,
-                                timeHeldDivisions: 0,
-                                noteOffTimeoutId: null
-                            });
-                        } else if (newState) {
-                            const gateDur = calculateGateDuration(clockDivisionDurationMs, gateLengthPercentage, currentGateMultiplier);
-                            ActiveNoteManager.scheduleNoteOff(expNote, gateDur, outputChannel);
+                        const cse = maxChordExtension > 1;
+                        const cst = nextPlayedInfo.stepsToNextChord <= maxTimeExtensionDivisions;
+                        const se = arpMode === 'chordN' && isInNxt && cse && cst;
+                        ActiveNoteManager.startNote(eN, vl, outputChannel);
+                        const nS = ActiveNoteManager.getActiveNotesMap().get(eN);
+                        if (se && nS) ActiveNoteManager.updateNoteState(eN, {
+                            isExtended: true,
+                            chordsHeldCount: 1,
+                            timeHeldDivisions: 0,
+                            noteOffTimeoutId: null
+                        });
+                        else if (nS) {
+                            const gD = calculateGateDuration(stepDurationMs, gateLengthPercentage, currentGateMultiplier);
+                            ActiveNoteManager.scheduleNoteOff(eN, gD, outputChannel);
                         }
                     }
                 });
@@ -2563,8 +2251,8 @@
             if (stepType === 'note') {
                 if (isChord) {
                     if (arpMode === 'chordN' && currentModeNoteList && currentModeNoteList.length > 0) {
-                        const dIdx = (currentNoteIndex % currentModeNoteList.length) + 1;
-                        el.textContent = `Ch${dIdx}`;
+                        const dI = (currentNoteIndex % currentModeNoteList.length) + 1;
+                        el.textContent = `Ch${dI}`;
                     } else {
                         el.textContent = 'Ch';
                     }
@@ -2581,14 +2269,12 @@
                 el.textContent = '!';
             }
             playbackDisplayElem.appendChild(el);
-            while (playbackDisplayElem.children.length > maxPlaybackSteps) {
-                playbackDisplayElem.removeChild(playbackDisplayElem.firstChild);
-            }
+            while (playbackDisplayElem.children.length > maxPlaybackSteps) playbackDisplayElem.removeChild(playbackDisplayElem.firstChild);
             playbackDisplayElem.scrollLeft = playbackDisplayElem.scrollWidth;
         }
 
         function generatePianoKeyboardUI() {
-            /* ... unchanged, calls NoteInputManager.handleNoteOn */
+            /* ... unchanged ... */
             const pk = document.getElementById('pianoKeyboard');
             pk.innerHTML = '';
             const sN = 48;
@@ -2597,73 +2283,64 @@
                 const nV = sN + i;
                 if (nV > 127) break;
                 const nN = notes[nV % 12];
-                const key = document.createElement('div');
-                key.classList.add('key');
-                key.dataset.note = nV;
-                key.title = midiNoteToName(nV);
-                key.id = `pianoKey-${nV}`;
-                if (nN.includes('#')) key.classList.add('black-key');
-                else key.classList.add('white-key');
-                key.addEventListener('click', function() {
+                const k = document.createElement('div');
+                k.classList.add('key');
+                k.dataset.note = nV;
+                k.title = midiNoteToName(nV);
+                k.id = `pianoKey-${nV}`;
+                if (nN.includes('#')) k.classList.add('black-key');
+                else k.classList.add('white-key');
+                k.addEventListener('click', function() {
                     NoteInputManager.handleNoteOn(nV, 'ui');
                 });
-                pk.appendChild(key);
+                pk.appendChild(k);
             }
         }
 
-        /** Updates interactive piano key UI - Uses NoteInputManager getters */
         function updatePianoKeyboardUI(note, source) {
-            const keyElement = document.getElementById(`pianoKey-${note}`);
-            if (!keyElement) return;
-            keyElement.classList.remove('key-held-ui', 'key-held-midi', 'key-current');
-
-            // *** Refactor: Check state via NoteInputManager (though it tells us via callback too) ***
-            // This function is now mainly for reacting to calls *from* NoteInputManager
-            // or for highlighting the 'current' arp note.
-            if (source === 'ui' && NoteInputManager.getRawHeldNotes().includes(note)) { // Check raw notes for UI holds
-                keyElement.classList.add('key-held-ui');
-            } else if (source === 'midi' && NoteInputManager.getRawHeldNotes().includes(note)) { // Check raw notes for MIDI holds
-                keyElement.classList.add('key-held-midi');
-            } else if (source === null && !NoteInputManager.getRawHeldNotes().includes(note)) {
-                // Explicitly removing highlight if source is null (e.g., note off)
-            }
+            /* ... unchanged ... */
+            const k = document.getElementById(`pianoKey-${note}`);
+            if (!k) return;
+            k.classList.remove('key-held-ui', 'key-held-midi', 'key-current');
+            if (source === 'ui' && NoteInputManager.getRawHeldNotes().includes(note)) k.classList.add('key-held-ui');
+            else if (source === 'midi' && NoteInputManager.getRawHeldNotes().includes(note)) k.classList.add('key-held-midi');
         }
 
         function highlightPianoKeys(notesToHighlight) {
             /* ... unchanged ... */
             unhighlightPianoKeys();
             if (!notesToHighlight) return;
-            const arr = Array.isArray(notesToHighlight) ? notesToHighlight : [notesToHighlight];
-            if (arr.length > 0) {
-                arr.forEach(n => {
+            const a = Array.isArray(notesToHighlight) ? notesToHighlight : [notesToHighlight];
+            if (a.length > 0) {
+                a.forEach(n => {
                     const k = document.getElementById(`pianoKey-${n}`);
                     if (k) k.classList.add('key-current');
                 });
-                highlightedPianoKey = arr[0];
+                highlightedPianoKey = a[0];
             }
         }
 
         function unhighlightPianoKeys() {
             /* ... unchanged ... */
-            const cur = document.querySelectorAll('#pianoKeyboard .key.key-current');
-            cur.forEach(k => k.classList.remove('key-current'));
+            const c = document.querySelectorAll('#pianoKeyboard .key.key-current');
+            c.forEach(k => k.classList.remove('key-current'));
             highlightedPianoKey = null;
         }
 
         function highlightRhythmStep(displayElementId, stepIndex, gateExtension = 0) {
             /* ... unchanged ... */
             unhighlightRhythmStep(displayElementId);
-            const rLen = (displayElementId === 'patternDisplay' ? patternRhythm?.length : rhythm?.length) || 0;
-            if (rLen === 0) return;
-            const idx = stepIndex % rLen;
+            const rL = (displayElementId === 'patternDisplay' ? RhythmManager.getPatternLength() : RhythmManager.getRhythmLength()) || 0;
+            if (rL === 0) return;
+            const idx = stepIndex % rL;
             const el = document.getElementById(`${displayElementId}-step-${idx}`);
             if (el) {
                 el.classList.add('current-step');
-                if (isGateFlexEnabled && displayElementId === 'rhythmDisplay' && gateExtension > 1) {
+                if (RhythmManager.isGateFlexEnabled() && displayElementId === 'rhythmDisplay' && gateExtension > 1) {
                     for (let i = 1; i < gateExtension; i++) {
-                        const extIdx = (idx + i) % rLen;
-                        const extEl = document.getElementById(`${displayElementId}-step-${extIdx}`);
-                        if (extEl) extEl.classList.add('gate-extended-step');
+                        const eI = (idx + i) % rL;
+                        const eE = document.getElementById(`${displayElementId}-step-${eI}`);
+                        if (eE) eE.classList.add('gate-extended-step');
                     }
                 }
             }
@@ -2671,25 +2348,25 @@
 
         function unhighlightRhythmStep(displayElementId) {
             /* ... unchanged ... */
-            const cur = document.querySelector(`#${displayElementId} .current-step`);
-            if (cur) cur.classList.remove('current-step');
+            const c = document.querySelector(`#${displayElementId} .current-step`);
+            if (c) c.classList.remove('current-step');
             if (displayElementId === 'rhythmDisplay') {
-                const ext = document.querySelectorAll('#rhythmDisplay .rhythm-step.gate-extended-step');
-                ext.forEach(s => s.classList.remove('gate-extended-step'));
+                const e = document.querySelectorAll('#rhythmDisplay .rhythm-step.gate-extended-step');
+                e.forEach(s => s.classList.remove('gate-extended-step'));
             }
         }
 
         function highlightCurrentPatternStep() {
-            /* ... unchanged ... */
-            if (!isPatternDisabled && patternRhythm && patternRhythm.length > 0) highlightRhythmStep('patternDisplay', currentPatternIndex % patternRhythm.length);
+            /* ... uses RhythmManager getter ... */
+            if (RhythmManager.isPatternActive() && RhythmManager.getPatternLength() > 0) highlightRhythmStep('patternDisplay', currentPatternIndex % RhythmManager.getPatternLength());
             else unhighlightRhythmStep('patternDisplay');
         }
 
         function highlightCurrentArpRhythmStep() {
-            /* ... unchanged ... */
-            if (!isRhythmDisabled && rhythm && rhythm.length > 0) {
-                const idx = currentRhythmIndex % rhythm.length;
-                const ext = (isGateFlexEnabled && rhythmGateMultipliers && rhythmGateMultipliers.length > idx) ? rhythmGateMultipliers[idx] : 0;
+            /* ... uses RhythmManager getters ... */
+            if (RhythmManager.isRhythmActive() && RhythmManager.getRhythmLength() > 0) {
+                const idx = currentRhythmIndex % RhythmManager.getRhythmLength();
+                const ext = RhythmManager.isGateFlexEnabled() ? (RhythmManager.getRhythmGateMultiplier(idx) || 0) : 0;
                 highlightRhythmStep('rhythmDisplay', idx, ext);
             } else unhighlightRhythmStep('rhythmDisplay');
         }
@@ -2722,54 +2399,46 @@
                 const nV = sN + i;
                 if (nV > 127) break;
                 const nN = notes[nV % 12];
-                const key = document.createElement('div');
-                key.classList.add('playback-key');
-                key.dataset.note = nV;
-                key.id = `playbackKey-${nV}`;
-                if (nN && nN.includes('#')) key.classList.add('playback-black-key');
-                else key.classList.add('playback-white-key');
-                pk.appendChild(key);
+                const k = document.createElement('div');
+                k.classList.add('playback-key');
+                k.dataset.note = nV;
+                k.id = `playbackKey-${nV}`;
+                if (nN && nN.includes('#')) k.classList.add('playback-black-key');
+                else k.classList.add('playback-white-key');
+                pk.appendChild(k);
             }
         }
 
-        /** Updates playback keyboard UI - Uses NoteInputManager */
         function updatePlaybackKeyboardUI() {
-            const playbackKeys = document.querySelectorAll('.playback-key');
-            playbackKeys.forEach(key => {
-                const note = parseInt(key.dataset.note);
-                updatePlaybackKeyboardKey(note); // Update each key's state based on NIM/ANM
-            });
+            /* ... unchanged ... */
+            const keys = document.querySelectorAll('.playback-key');
+            keys.forEach(k => updatePlaybackKeyboardKey(parseInt(k.dataset.note)));
         }
 
-        /** Updates playback keyboard key - Uses NoteInputManager & ActiveNoteManager */
         function updatePlaybackKeyboardKey(note) {
-            const keyElement = document.getElementById(`playbackKey-${note}`);
-            if (!keyElement) return;
-
-            // *** Refactor: Get held status from NoteInputManager ***
-            const rawNotes = NoteInputManager.getRawHeldNotes();
-            const heldNotesExpanded = NoteInputManager.getHeldNotes(); // Expanded list
-            const isHeldUI = NoteInputManager.hasHeldUINote(note); // Need direct access or getter if moving sets
-            const isHeldMIDI = NoteInputManager.hasHeldMIDINote(note); // Need direct access or getter if moving sets
-            const isHeldOctave = heldNotesExpanded.includes(note) && !rawNotes.includes(note);
-
-            // Get playing status from ActiveNoteManager
-            const isActiveArp = ActiveNoteManager.hasNote(note);
-            const arpNoteState = isActiveArp ? ActiveNoteManager.getActiveNotesMap().get(note) : null;
-            const isGateExtended = isActiveArp && arpNoteState && arpNoteState.isExtended;
-
-            keyElement.classList.remove('key-held-ui', 'key-held-midi', 'key-held-octave-expanded', 'key-current', 'key-gate-extended');
-            if (isGateExtended) keyElement.classList.add('key-gate-extended');
-            else if (isActiveArp) keyElement.classList.add('key-current');
-            else if (isHeldUI) keyElement.classList.add('key-held-ui'); // Check raw note for UI
-            else if (isHeldMIDI) keyElement.classList.add('key-held-midi'); // Check raw note for MIDI
-            else if (isHeldOctave) keyElement.classList.add('key-held-octave-expanded');
+            /* ... unchanged ... */
+            const k = document.getElementById(`playbackKey-${note}`);
+            if (!k) return;
+            const raw = NoteInputManager.getRawHeldNotes();
+            const heldE = NoteInputManager.getHeldNotes();
+            const hUI = NoteInputManager.hasHeldUINote(note);
+            const hMIDI = NoteInputManager.hasHeldMIDINote(note);
+            const hOct = heldE.includes(note) && !raw.includes(note);
+            const actA = ActiveNoteManager.hasNote(note);
+            const stA = actA ? ActiveNoteManager.getActiveNotesMap().get(note) : null;
+            const gExt = actA && stA && stA.isExtended;
+            k.classList.remove('key-held-ui', 'key-held-midi', 'key-held-octave-expanded', 'key-current', 'key-gate-extended');
+            if (gExt) k.classList.add('key-gate-extended');
+            else if (actA) k.classList.add('key-current');
+            else if (hUI) k.classList.add('key-held-ui');
+            else if (hMIDI) k.classList.add('key-held-midi');
+            else if (hOct) k.classList.add('key-held-octave-expanded');
         }
 
         function unhighlightPlaybackPianoKeys() {
             /* ... unchanged ... */
-            const cur = document.querySelectorAll('#playbackKeyboardDisplay .playback-key.key-current, #playbackKeyboardDisplay .playback-key.key-gate-extended');
-            cur.forEach(k => {
+            const c = document.querySelectorAll('#playbackKeyboardDisplay .playback-key.key-current, #playbackKeyboardDisplay .playback-key.key-gate-extended');
+            c.forEach(k => {
                 k.classList.remove('key-current', 'key-gate-extended');
                 updatePlaybackKeyboardKey(parseInt(k.dataset.note));
             });
@@ -2781,7 +2450,7 @@
 
         // --- WALK MODE FUNCTIONS (unchanged) ---
         function advanceWalkIndex() {
-            /* ... unchanged ... */
+            /*..*/
             if (currentModeNoteList && currentModeNoteList.length > 0) {
                 const p = calculateWalkProbabilities(walkSkew);
                 const r = Math.random();
@@ -2790,12 +2459,12 @@
             }
         }
 
-        function calculateWalkProbabilities(skew) {
-            /* ... unchanged ... */
-            skew = Math.max(-1, Math.min(1, skew));
+        function calculateWalkProbabilities(s) {
+            /*..*/
+            s = Math.max(-1, Math.min(1, s));
             let pn, pc, pv;
-            pv = Math.max(0, (1 / 3) * (1 - skew));
-            pn = Math.max(0, (1 / 3) * (1 + skew));
+            pv = Math.max(0, (1 / 3) * (1 - s));
+            pn = Math.max(0, (1 / 3) * (1 + s));
             pc = Math.max(0, 1 - pv - pn);
             const t = pv + pc + pn;
             if (t > 0) {
@@ -2815,7 +2484,7 @@
         }
 
         function advanceNormalWalkIndex() {
-            /* ... unchanged ... */
+            /*..*/
             if (currentModeNoteList && currentModeNoteList.length > 0) {
                 const sig = 0.3 + walkDistance * 2;
                 const mu = walkSkew * (currentModeNoteList.length / 4);
@@ -2826,22 +2495,21 @@
             }
         }
 
-        function sampleNormalDistribution(mu, sigma) {
-            /* ... unchanged ... */
+        function sampleNormalDistribution(m, s) {
+            /*..*/
             let u1 = 0,
                 u2 = 0;
             while (u1 === 0) u1 = Math.random();
             while (u2 === 0) u2 = Math.random();
             const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-            return z0 * sigma + mu;
+            return z0 * s + m;
         }
 
         // --- Initialization ---
-        generatePianoKeyboardUI(); // Uses NoteInputManager.handleNoteOn internally now
+        generatePianoKeyboardUI();
         generatePlaybackPianoKeyboardUI();
-        updateRhythmDisplays();
-        // updateModeNoteList(); // Called within handleNotesChanged initial call
-        // Update initial UI display values (unchanged)
+        // updateRhythmDisplays removed (done in RhythmManager init)
+        // UI updates (unchanged)
         document.getElementById('chordNValueDisplay').textContent = chordNValue;
         document.getElementById('maxChordExtensionValue').textContent = maxChordExtension;
         document.getElementById('maxTimeExtensionValue').textContent = maxTimeExtensionDivisions;
@@ -2851,9 +2519,7 @@
         document.getElementById('walkDistanceValue').textContent = walkDistance.toFixed(2);
         document.getElementById('gateLengthValue').textContent = gateLengthPercentage;
         document.getElementById('subArpScaleValue').textContent = subArpScalePercentage;
-        updateTempoDisplay();
-        updatePatternControlsState();
-        updateRhythmControlsState();
+        // updatePatternControlsState / updateRhythmControlsState removed (done in RhythmManager init/updates)
 
         // Initialize Managers
         ActiveNoteManager.initialize({
@@ -2863,14 +2529,38 @@
         NoteInputManager.initialize({
             onNotesChanged: handleNotesChanged,
             getMPEInputConfig: MidiManager.getMPEInputConfig,
-            updatePianoKeyCallback: updatePianoKeyboardUI, // Pass UI update fn
-            updatePlaybackKeyboardCallback: updatePlaybackKeyboardUI // Pass playback update fn
+            updatePianoKeyCallback: updatePianoKeyboardUI,
+            updatePlaybackKeyboardCallback: updatePlaybackKeyboardUI
         });
-        MidiManager.initialize(midiManagerCallbacks); // Start MIDI
+        ClockManager.initialize({
+            initialTempoSource: document.getElementById('tempoSource').value,
+            initialBPM: parseInt(document.getElementById('tempoBPM').value),
+            initialClockDivision: document.getElementById('clockDivision').value,
+            onArpStep: arpStep,
+            onTempoUpdate: updateTempoDisplay
+        });
+        // *** Refactor: Initialize RhythmManager ***
+        RhythmManager.initialize({
+            initialPatternSteps: parseInt(document.getElementById('patternSteps').value),
+            initialPatternBeats: parseInt(document.getElementById('patternBeats').value),
+            initialPatternOffset: parseInt(document.getElementById('patternOffset').value),
+            initialIsPatternDisabled: !document.getElementById('enablePattern').checked,
+            initialRhythmSteps: parseInt(document.getElementById('rhythmSteps').value),
+            initialRhythmBeats: parseInt(document.getElementById('rhythmBeats').value),
+            initialRhythmOffset: parseInt(document.getElementById('rhythmOffset').value),
+            initialIsRhythmDisabled: !document.getElementById('enableRhythm').checked,
+            initialIsGateFlexEnabled: document.getElementById('enableGateFlex').checked,
+            // Pass UI update functions
+            onPatternDisplayUpdate: (rhythmArr, isDisabled) => displayRhythm(rhythmArr, 'patternDisplay', isDisabled),
+            onRhythmDisplayUpdate: (rhythmArr, isDisabled) => displayRhythm(rhythmArr, 'rhythmDisplay', isDisabled),
+            onPatternControlsUpdate: updatePatternControlsState,
+            onRhythmControlsUpdate: updateRhythmControlsState
+        });
+        MidiManager.initialize(midiManagerCallbacks); // Start MIDI (must be after other inits if they need MIDI state)
 
         // Trigger initial update based on default state
         handleNotesChanged(NoteInputManager.getHeldNotes(), NoteInputManager.getRawHeldNotes(), NoteInputManager.getPlayedNoteOrderFiltered());
-        lastNotesToArp = NoteInputManager.getRawHeldNotes(); // Initialize lastNotesToArp
+        lastNotesToArp = NoteInputManager.getRawHeldNotes();
     </script>
 </body>
 </html>
